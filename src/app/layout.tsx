@@ -24,11 +24,11 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "ARKE — Del Prompt al Estampado",
+    default: "ARKE — Tu Diseño, Tu Estilo",
     template: "%s | ARKE",
   },
   description:
-    "Camisetas personalizadas con IA. Describí tu diseño, la IA lo crea, tú lo vistes.",
+    "Camisetas personalizadas con tu propio diseño. Subí tu imagen, elegí tu camiseta y recibila en tu puerta.",
   icons: {
     icon: "/brand/favicon.png",
   },

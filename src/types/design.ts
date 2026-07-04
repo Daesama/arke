@@ -1,10 +1,17 @@
-import type { TshirtColor } from "./database";
+import type { TshirtColor, TshirtGenero, TshirtMaterial, TshirtSize } from "./database";
 
 export type DesignZone = "pechoBolsillo" | "abdominalGrande" | "espaldaGrande";
+
+export interface ZoneTransform {
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+}
 
 export interface DesignZoneEntry {
   imageUrl: string;
   enabled: boolean;
+  transform?: ZoneTransform;
 }
 
 export interface DesignZoneConfig {
@@ -14,7 +21,10 @@ export interface DesignZoneConfig {
 }
 
 export interface DesignConfig {
+  genero: TshirtGenero;
+  material: TshirtMaterial;
   color: TshirtColor;
+  talla: TshirtSize;
   zones: DesignZoneConfig;
 }
 

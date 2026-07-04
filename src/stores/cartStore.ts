@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { TshirtColor, TshirtSize, PrintPosition } from "@/types/database";
+import type { TshirtColor, TshirtSize, TshirtGenero, TshirtMaterial, PrintPosition } from "@/types/database";
 import type { DesignZoneConfig } from "@/types/design";
 
 export interface CartItem {
@@ -11,6 +11,8 @@ export interface CartItem {
   designId: string;
   designImageUrl: string;
   designPrompt: string;
+  genero: TshirtGenero;
+  material: TshirtMaterial;
   color: TshirtColor;
   size: TshirtSize;
   printPosition: PrintPosition;

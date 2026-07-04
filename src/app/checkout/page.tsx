@@ -8,14 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { CreditCard, Building2, Smartphone, Truck } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-
-function formatCOP(cents: number) {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 0,
-  }).format(cents / 100);
-}
+import { formatCOP } from "@/lib/utils/pricing";
 
 const paymentMethods = [
   { id: "wompi_card", label: "Tarjeta", icon: CreditCard },
@@ -29,7 +22,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState("wompi_card");
   const [loading, setLoading] = useState(false);
 
-  const shipping = 1200000; // $12,000 COP
+  const shipping = 0;
   const total = totalPrice() + shipping;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -111,7 +104,7 @@ export default function CheckoutPage() {
               {items.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
                   <span className="text-text-secondary">
-                    Camiseta IA x{item.quantity}
+                    Camiseta personalizada x{item.quantity}
                   </span>
                   <span className="text-text-primary">
                     {formatCOP(item.unitPrice * item.quantity)}
@@ -127,7 +120,7 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-text-secondary">Envío</span>
-                <span className="text-text-primary">{formatCOP(shipping)}</span>
+                <span className="text-cyan text-xs">Incluido</span>
               </div>
               <div className="flex justify-between border-t border-elevated pt-2">
                 <span className="font-medium text-text-primary">Total</span>

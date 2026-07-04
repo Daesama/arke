@@ -2,14 +2,21 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X, ShoppingCart } from "lucide-react";
 import { NAV_LINKS } from "@/lib/utils/constants";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
+import { useCartStore } from "@/stores/cartStore";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const totalItems = useCartStore((s) => s.totalItems());
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-elevated bg-void/80 backdrop-blur-xl">
@@ -51,6 +58,11 @@ export function Header() {
             aria-label="Carrito de compras"
           >
             <ShoppingCart className="h-5 w-5" />
+            {mounted && totalItems > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-cyan px-1 text-[10px] font-medium text-void">
+                {totalItems}
+              </span>
+            )}
           </Link>
 
           <Link href="/crear" className="hidden sm:block">

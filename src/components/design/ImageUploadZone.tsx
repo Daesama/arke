@@ -17,7 +17,6 @@ const ACCEPTED_TYPES = ".jpg,.jpeg,.png,.webp";
 
 export function ImageUploadZone({
   label,
-  description,
   imagePreview,
   onFileSelect,
   onRemove,
@@ -32,41 +31,17 @@ export function ImageUploadZone({
   }
 
   return (
-    <div className="rounded-lg border border-elevated bg-deep p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-text-primary">{label}</p>
-          <p className="text-xs text-text-muted">{description}</p>
-        </div>
-        {imagePreview && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="rounded-md p-1 text-text-muted transition-colors hover:bg-magenta/10 hover:text-magenta"
-            aria-label={`Eliminar imagen de ${label}`}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
+    <div className="flex items-center gap-2.5 rounded-lg border border-elevated bg-deep px-2.5 py-2">
       {imagePreview ? (
-        <div className="relative overflow-hidden rounded-md border border-elevated">
+        <div
+          className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border border-elevated bg-void"
+          onClick={() => inputRef.current?.click()}
+        >
           <img
             src={imagePreview}
-            alt={`Preview de ${label}`}
-            className="h-24 w-full object-contain bg-void"
+            alt={label}
+            className="h-full w-full object-contain"
           />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={disabled}
-            className="absolute inset-0 flex items-center justify-center bg-void/60 opacity-0 transition-opacity hover:opacity-100"
-          >
-            <span className="rounded-md bg-surface px-3 py-1.5 text-xs text-text-primary">
-              Cambiar imagen
-            </span>
-          </button>
         </div>
       ) : (
         <button
@@ -74,15 +49,34 @@ export function ImageUploadZone({
           onClick={() => inputRef.current?.click()}
           disabled={disabled}
           className={cn(
-            "flex w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-elevated py-6 transition-all",
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-2 border-dashed border-elevated transition-colors",
             "hover:border-cyan/50 hover:bg-cyan/5",
             disabled && "pointer-events-none opacity-50",
           )}
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface text-text-muted">
-            <Upload className="h-4 w-4" />
-          </div>
-          <span className="text-xs text-text-secondary">Subir imagen</span>
+          <Upload className="h-3.5 w-3.5 text-text-muted" />
+        </button>
+      )}
+
+      <span className="flex-1 text-xs font-medium text-text-primary truncate">{label}</span>
+
+      {imagePreview ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="shrink-0 rounded-md p-1 text-text-muted transition-colors hover:bg-magenta/10 hover:text-magenta"
+          aria-label={`Eliminar ${label}`}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={disabled}
+          className="shrink-0 rounded-md border border-elevated px-2 py-1 text-[10px] text-text-secondary transition-colors hover:border-cyan/50 hover:text-cyan"
+        >
+          Subir
         </button>
       )}
 

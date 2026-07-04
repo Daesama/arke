@@ -1,7 +1,7 @@
 export const SITE_NAME = "ARKE";
-export const SITE_TAGLINE = "Del Prompt al Estampado";
+export const SITE_TAGLINE = "Tu Diseño, Tu Estilo";
 export const SITE_DESCRIPTION =
-  "Camisetas personalizadas con IA. Describí tu diseño, la IA lo crea, tú lo vistes.";
+  "Camisetas personalizadas con tu propio diseño. Subí tu imagen, elegí tu camiseta y recibila en tu puerta.";
 
 export const NAV_LINKS = [
   { label: "Inicio", href: "/" },
@@ -29,6 +29,17 @@ export const TSHIRT_COLORS = [
 ] as const;
 
 export const TSHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
+
+export const TSHIRT_GENDERS = [
+  { label: "Mujer", value: "mujer" },
+  { label: "Hombre", value: "hombre" },
+] as const;
+
+export const TSHIRT_MATERIALS = [
+  { label: "Piel de Durazno", value: "piel_de_durazno", description: "Suave al tacto, ligera" },
+  { label: "Algodón Licrado", value: "algodon_licrado", description: "Clásica, cómoda y flexible" },
+  { label: "Seda Fría", value: "seda_fria", description: "Fresca, ideal para clima cálido" },
+] as const;
 
 export const PRINT_POSITIONS = [
   { label: "Pecho", value: "pecho" },

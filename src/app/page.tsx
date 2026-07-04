@@ -3,27 +3,27 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { MessageSquare, Sparkles, Shirt } from "lucide-react";
+import { Upload, Palette, Truck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 const steps = [
   {
-    icon: MessageSquare,
-    title: "Describí tu idea",
+    icon: Upload,
+    title: "Subí tu diseño",
     description:
-      "Chateá con nuestra IA y contale qué diseño querés. Puede ser una frase, un concepto o lo que se te ocurra.",
+      "Cargá tu imagen (JPG, PNG, WebP) y elegí en qué zona de la camiseta la querés estampar.",
   },
   {
-    icon: Sparkles,
-    title: "La IA lo crea",
+    icon: Palette,
+    title: "Personalizá tu camiseta",
     description:
-      "Nuestra IA genera tu diseño en segundos. Podés pedir ajustes hasta que quede perfecto.",
+      "Elegí color, talla y posición del estampado. Previsualizá cómo queda en tiempo real.",
   },
   {
-    icon: Shirt,
-    title: "Tú lo vistes",
+    icon: Truck,
+    title: "Te la enviamos",
     description:
-      "Previsualizá el diseño sobre la camiseta, elegí talla y color, y recibilo en tu casa.",
+      "Hacé tu pedido y recibí tu camiseta personalizada en la puerta de tu casa.",
   },
 ];
 
@@ -64,7 +64,7 @@ export default function Home() {
           transition={{ delay: 0.2, duration: 0.5 }}
           className="mb-4 font-mono text-xs uppercase tracking-[0.3em] text-cyan"
         >
-          Del Prompt al Estampado
+          Tu Diseño, Tu Estilo
         </motion.p>
 
         <motion.h1
@@ -73,8 +73,8 @@ export default function Home() {
           transition={{ delay: 0.3, duration: 0.5 }}
           className="max-w-3xl font-heading text-3xl font-medium leading-tight text-text-primary sm:text-4xl md:text-5xl"
         >
-          Imaginalo. La IA lo crea.{" "}
-          <span className="text-cyan">Tú lo vistes.</span>
+          Vos diseñás.{" "}
+          <span className="text-cyan">Nosotros estampamos.</span>
         </motion.h1>
 
         <motion.p
@@ -83,8 +83,8 @@ export default function Home() {
           transition={{ delay: 0.45, duration: 0.5 }}
           className="mt-6 max-w-xl text-base text-text-secondary sm:text-lg"
         >
-          Camisetas personalizadas con inteligencia artificial. Describí tu
-          diseño, la IA lo genera, y te lo enviamos a tu puerta.
+          Subí tu imagen, elegí tu camiseta y recibila en tu puerta.
+          Así de simple.
         </motion.p>
 
         <motion.div
@@ -94,7 +94,7 @@ export default function Home() {
           className="mt-8 flex flex-col gap-3 sm:flex-row"
         >
           <Link href="/crear">
-            <Button size="lg">Crear mi diseño</Button>
+            <Button size="lg">Crear mi camiseta</Button>
           </Link>
           <Link href="/catalogo">
             <Button variant="secondary" size="lg">
@@ -182,15 +182,15 @@ export default function Home() {
               className="font-heading text-2xl font-medium text-text-primary sm:text-3xl"
             >
               Tu próxima camiseta empieza con{" "}
-              <span className="text-violet">una idea</span>
+              <span className="text-violet">tu imagen</span>
             </motion.h2>
             <motion.p
               variants={fadeUp}
               custom={1}
               className="mt-4 text-text-secondary"
             >
-              No necesitás saber diseñar. Solo contale a la IA qué querés y
-              mirá cómo cobra vida.
+              Subí tu diseño, elegí cómo lo querés y nosotros nos encargamos del
+              resto.
             </motion.p>
             <motion.div variants={fadeUp} custom={2} className="mt-8">
               <Link href="/crear">

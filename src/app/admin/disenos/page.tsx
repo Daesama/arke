@@ -7,7 +7,7 @@ export default function AdminDisenosPage() {
       <div className="mb-8">
         <h1 className="font-heading text-2xl font-medium text-cyan">Diseños</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Diseños generados por usuarios. Descargá el PNG para enviar al estampador.
+          Diseños subidos por usuarios. Descargá el PNG para enviar al estampador.
         </p>
       </div>
 
@@ -19,7 +19,7 @@ export default function AdminDisenosPage() {
           No hay diseños aún
         </p>
         <p className="mt-2 max-w-sm text-sm text-text-secondary">
-          Los diseños generados por los usuarios aparecerán acá para que puedas descargarlos.
+          Los diseños subidos por los usuarios aparecerán acá para que puedas descargarlos.
         </p>
       </div>
     </div>

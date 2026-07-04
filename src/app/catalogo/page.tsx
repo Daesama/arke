@@ -78,7 +78,7 @@ export default function CatalogoPage() {
           Pronto habrá diseños acá
         </p>
         <p className="mt-2 max-w-sm text-sm text-text-secondary">
-          Estamos preparando una colección increíble. Mientras tanto, podés crear tu propio diseño con IA.
+          Estamos preparando una colección increíble. Mientras tanto, podés subir tu propio diseño.
         </p>
         <Button className="mt-6" size="md" onClick={() => window.location.href = "/crear"}>
           Crear mi diseño

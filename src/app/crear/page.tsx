@@ -1,16 +1,20 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { TshirtPreview } from "@/components/design/TshirtPreview";
 import { ImageUploadZone } from "@/components/design/ImageUploadZone";
 import { SizeSelector } from "@/components/design/SizeSelector";
+import { GenderSelector } from "@/components/design/GenderSelector";
+import { MaterialSelector } from "@/components/design/MaterialSelector";
 import { Button } from "@/components/ui/Button";
 import { ShoppingCart, Settings2, Eye, LogIn } from "lucide-react";
+import { ColorPicker } from "@/components/design/ColorPicker";
+import { calculatePrice, getPriceBreakdown, formatCOP } from "@/lib/utils/pricing";
 import { useCartStore } from "@/stores/cartStore";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
-import type { TshirtColor, TshirtSize } from "@/types/database";
-import type { DesignZone, DesignZoneConfig } from "@/types/design";
+import type { TshirtColor, TshirtSize, TshirtGenero, TshirtMaterial } from "@/types/database";
+import type { DesignZone, DesignZoneConfig, ZoneTransform } from "@/types/design";
 import Link from "next/link";
 
 interface ColorOption {
@@ -19,7 +23,7 @@ interface ColorOption {
   slug: TshirtColor;
 }
 
-const COLORS: ColorOption[] = [
+const PRESET_COLORS: ColorOption[] = [
   { name: "Negro", value: "#1a1a1a", slug: "negro" },
   { name: "Blanco", value: "#f5f5f5", slug: "blanco" },
   { name: "Gris", value: "#6B7280", slug: "gris" },
@@ -46,26 +50,33 @@ const emptyZones: ZonesMap = {
 };
 
 export default function CrearPage() {
-  const [color, setColor] = useState(COLORS[0]);
-  const [size, setSize] = useState<TshirtSize>("M");
+  const [genero, setGenero] = useState<TshirtGenero | null>(null);
+  const [material, setMaterial] = useState<TshirtMaterial | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<ColorOption | null>(PRESET_COLORS[0]);
+  const [customColor, setCustomColor] = useState("#8B5CF6");
+  const colorHex = selectedPreset?.value ?? customColor;
+  const colorName = selectedPreset?.name ?? customColor.toUpperCase();
+  const colorSlug: TshirtColor = selectedPreset?.slug ?? customColor;
+  const [size, setSize] = useState<TshirtSize | null>(null);
   const [side, setSide] = useState<"front" | "back">("front");
   const [zones, setZones] = useState<ZonesMap>({ ...emptyZones });
   const [activeTab, setActiveTab] = useState<"config" | "preview">("config");
+  const [abdominalTransform, setAbdominalTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
+  const [espaldaTransform, setEspaldaTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [isUploading, setIsUploading] = useState(false);
   const [added, setAdded] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const addItem = useCartStore((s) => s.addItem);
 
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
-    }).catch(() => {
-      setIsAuthenticated(false);
-    });
-  }, []);
-
   const hasAnyImage = zones.pechoBolsillo.file || zones.abdominalGrande.file || zones.espaldaGrande.file;
+  const hasColor = selectedPreset !== null || customColor !== "#8B5CF6";
+  const canAddToCart = !!genero && !!material && hasColor && !!size && !!hasAnyImage;
+
+  const activeZones: DesignZone[] = [];
+  if (zones.pechoBolsillo.file) activeZones.push("pechoBolsillo");
+  if (zones.abdominalGrande.file) activeZones.push("abdominalGrande");
+  if (zones.espaldaGrande.file) activeZones.push("espaldaGrande");
+  const priceBreakdown = getPriceBreakdown(activeZones);
+  const totalPrice = calculatePrice(activeZones);
 
   const handleFileSelect = useCallback((zone: DesignZone, file: File) => {
     const preview = URL.createObjectURL(file);
@@ -86,15 +97,20 @@ export default function CrearPage() {
     setSide(newSide);
   }, []);
 
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   async function handleAddToCart() {
-    if (!hasAnyImage || isUploading) return;
+    if (!canAddToCart || isUploading) return;
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
 
     setIsUploading(true);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const designId = crypto.randomUUID();
       const config: DesignZoneConfig = {};
       let primaryImageUrl = "";
@@ -119,6 +135,8 @@ export default function CrearPage() {
         config[zone.key] = {
           imageUrl: urlData.publicUrl,
           enabled: true,
+          ...(zone.key === "abdominalGrande" ? { transform: abdominalTransform } : {}),
+          ...(zone.key === "espaldaGrande" ? { transform: espaldaTransform } : {}),
         };
 
         if (!primaryImageUrl) primaryImageUrl = urlData.publicUrl;
@@ -131,9 +149,11 @@ export default function CrearPage() {
         image_url: primaryImageUrl,
         image_path: `${user.id}/${designId}`,
         config: {
+          genero,
+          material,
+          color: colorSlug,
+          talla: size,
           zones: config,
-          color: color.slug,
-          size,
         },
         is_catalog: false,
         is_public: false,
@@ -146,12 +166,14 @@ export default function CrearPage() {
         designId,
         designImageUrl: primaryImageUrl,
         designPrompt: "",
-        color: color.slug,
-        size,
+        genero: genero!,
+        material: material!,
+        color: colorSlug,
+        size: size!,
         printPosition: "pecho",
         designConfig: config,
         quantity: 1,
-        unitPrice: 4500000,
+        unitPrice: totalPrice,
       });
 
       setAdded(true);
@@ -163,24 +185,26 @@ export default function CrearPage() {
     }
   }
 
-  if (isAuthenticated === null) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan border-t-transparent" />
-      </div>
-    );
+  function getButtonLabel(): string {
+    if (added) return "¡Agregado al carrito!";
+    if (isUploading) return "Subiendo imágenes...";
+    if (!genero) return "Elegí un género";
+    if (!material) return "Elegí un material";
+    if (!size) return "Elegí una talla";
+    if (!hasAnyImage) return "Subí al menos una imagen";
+    return `Agregar al carrito — ${formatCOP(totalPrice)}`;
   }
 
   return (
     <div className="relative mx-auto flex h-[calc(100vh-4rem)] max-w-7xl flex-col">
-      {!isAuthenticated && (
+      {showAuthModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm">
           <div className="mx-4 w-full max-w-sm rounded-xl border border-elevated bg-surface p-6 text-center shadow-glow-cyan">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
               <LogIn className="h-7 w-7" />
             </div>
             <h2 className="font-heading text-xl font-medium text-text-primary">
-              Iniciá sesión para crear
+              Iniciá sesión para continuar
             </h2>
             <p className="mt-2 text-sm text-text-secondary">
               Necesitás una cuenta para guardar tus diseños y hacer pedidos.
@@ -194,6 +218,13 @@ export default function CrearPage() {
                   Crear cuenta
                 </Button>
               </Link>
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(false)}
+                className="mt-1 text-sm text-text-muted hover:text-text-secondary transition-colors"
+              >
+                Seguir diseñando
+              </button>
             </div>
           </div>
         </div>
@@ -235,112 +266,133 @@ export default function CrearPage() {
         {/* Left panel — Configuration */}
         <div
           className={cn(
-            "flex flex-col overflow-y-auto border-r border-elevated p-4 lg:block lg:w-[420px] lg:min-w-[380px]",
-            activeTab === "config" ? "block w-full" : "hidden",
+            "flex flex-col border-r border-elevated lg:w-[420px] lg:min-w-[380px]",
+            activeTab === "config" ? "flex w-full" : "hidden lg:flex",
           )}
         >
-          <div className="space-y-5">
-            {/* Color selector */}
-            <div>
-              <p className="mb-2 text-xs font-medium text-text-secondary">Color de camiseta</p>
-              <div className="flex items-center gap-2">
-                {COLORS.map((c) => (
-                  <button
-                    key={c.slug}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    className={cn(
-                      "h-8 w-8 rounded-full border-2 transition-all duration-200",
-                      color.slug === c.slug
-                        ? "border-cyan shadow-glow-cyan scale-110"
-                        : "border-elevated hover:border-text-muted hover:scale-105",
-                    )}
-                    style={{ backgroundColor: c.value }}
-                    aria-label={c.name}
-                    title={c.name}
-                  />
-                ))}
-                <span className="ml-2 text-xs text-text-muted">{color.name}</span>
-              </div>
-            </div>
+          <div className="flex-1 overflow-y-auto p-3">
+          <div className="flex flex-col gap-3">
+            {/* 1. Gender */}
+            <GenderSelector value={genero} onChange={setGenero} />
 
-            {/* View toggle */}
-            <div>
-              <p className="mb-2 text-xs font-medium text-text-secondary">Vista</p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSide("front")}
-                  className={cn(
-                    "rounded-lg border px-4 py-2 text-sm transition-all",
-                    side === "front"
-                      ? "border-cyan bg-cyan/10 text-cyan"
-                      : "border-elevated text-text-secondary hover:border-text-muted",
-                  )}
-                >
-                  Frente
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSide("back")}
-                  className={cn(
-                    "rounded-lg border px-4 py-2 text-sm transition-all",
-                    side === "back"
-                      ? "border-cyan bg-cyan/10 text-cyan"
-                      : "border-elevated text-text-secondary hover:border-text-muted",
-                  )}
-                >
-                  Espalda
-                </button>
-              </div>
-            </div>
+            {/* 2. Material */}
+            <MaterialSelector value={material} onChange={setMaterial} />
 
-            {/* Upload zones */}
+            {/* 3. Color + View toggle row */}
             <div>
-              <p className="mb-2 text-xs font-medium text-text-secondary">Zonas de estampado</p>
-              <div className="space-y-3">
-                {ZONES.map((zone, i) => {
-                  const prevSide = i > 0 ? ZONES[i - 1].side : null;
-                  const showHeader = zone.side !== prevSide;
-                  return (
-                    <div key={zone.key}>
-                      {showHeader && (
-                        <p className="mb-1.5 mt-1 text-[10px] text-text-muted uppercase tracking-wider font-mono">
-                          {zone.side === "front" ? "Frente" : "Espalda"}
-                        </p>
+              <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">Color</p>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-1 flex-wrap items-center gap-1.5">
+                  {PRESET_COLORS.map((c) => (
+                    <button
+                      key={c.slug}
+                      type="button"
+                      onClick={() => setSelectedPreset(c)}
+                      className={cn(
+                        "h-7 w-7 rounded-full border-2 transition-all duration-200",
+                        selectedPreset?.slug === c.slug
+                          ? "border-cyan shadow-glow-cyan scale-110"
+                          : "border-elevated hover:border-text-muted hover:scale-105",
                       )}
-                      <ImageUploadZone
-                        label={zone.label}
-                        description={zone.description}
-                        imagePreview={zones[zone.key].preview}
-                        onFileSelect={(file) => handleFileSelect(zone.key, file)}
-                        onRemove={() => handleRemove(zone.key)}
-                        disabled={isUploading}
-                      />
-                    </div>
-                  );
-                })}
+                      style={{ backgroundColor: c.value }}
+                      aria-label={c.name}
+                      title={c.name}
+                    />
+                  ))}
+
+                  {!selectedPreset && (
+                    <button
+                      type="button"
+                      className="h-7 w-7 rounded-full border-2 border-cyan shadow-glow-cyan scale-110 transition-all duration-200"
+                      style={{ backgroundColor: customColor }}
+                      aria-label="Color personalizado seleccionado"
+                      title={customColor}
+                    />
+                  )}
+
+                  <ColorPicker
+                    value={customColor}
+                    onChange={(hex) => {
+                      setCustomColor(hex);
+                      setSelectedPreset(null);
+                    }}
+                  />
+                </div>
+
+                <div className="flex shrink-0 overflow-hidden rounded-lg border border-elevated">
+                  <button
+                    type="button"
+                    onClick={() => setSide("front")}
+                    className={cn(
+                      "px-3 py-1.5 text-xs transition-all",
+                      side === "front"
+                        ? "bg-cyan/10 text-cyan"
+                        : "text-text-secondary hover:text-text-primary",
+                    )}
+                  >
+                    Frente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSide("back")}
+                    className={cn(
+                      "px-3 py-1.5 text-xs transition-all",
+                      side === "back"
+                        ? "bg-cyan/10 text-cyan"
+                        : "text-text-secondary hover:text-text-primary",
+                    )}
+                  >
+                    Espalda
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Size selector */}
+            {/* 4. Size selector */}
             <SizeSelector value={size} onChange={setSize} />
 
-            {/* Add to cart */}
+            {/* 5. Upload zones */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-text-muted">Zonas de estampado</p>
+              {ZONES.map((zone) => (
+                <ImageUploadZone
+                  key={zone.key}
+                  label={zone.label}
+                  description={zone.description}
+                  imagePreview={zones[zone.key].preview}
+                  onFileSelect={(file) => handleFileSelect(zone.key, file)}
+                  onRemove={() => handleRemove(zone.key)}
+                  disabled={isUploading}
+                />
+              ))}
+            </div>
+          </div>
+          </div>
+
+          {/* Bottom — Price + Add to cart */}
+          <div className="shrink-0 border-t border-elevated bg-void px-3 py-2.5 space-y-2">
+            {hasAnyImage && (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                  {priceBreakdown.items.map((item) => (
+                    <span key={item.label} className="text-text-muted">
+                      {item.label}: <span className="font-mono">{formatCOP(item.price)}</span>
+                    </span>
+                  ))}
+                </div>
+                <span className="shrink-0 font-mono font-medium text-cyan">{formatCOP(priceBreakdown.total)}</span>
+              </div>
+            )}
+
             <Button
               onClick={handleAddToCart}
-              size="lg"
               className="w-full"
               variant={added ? "secondary" : "primary"}
-              disabled={!hasAnyImage || isUploading}
+              disabled={!canAddToCart || isUploading}
               isLoading={isUploading}
             >
               {!isUploading && <ShoppingCart className="h-4 w-4" />}
-              {added
-                ? "¡Agregado al carrito!"
-                : isUploading
-                  ? "Subiendo imágenes..."
-                  : "Agregar al carrito — $45,000"}
+              {getButtonLabel()}
             </Button>
           </div>
         </div>
@@ -356,7 +408,8 @@ export default function CrearPage() {
             <div className="flex items-center justify-between border-b border-elevated px-4 py-3">
               <p className="text-sm font-medium text-text-primary font-heading">Preview</p>
               <p className="font-mono text-xs text-text-muted">
-                {size} / {color.name}
+                {size ?? "—"} / {colorName}
+                {genero ? ` / ${genero === "mujer" ? "Mujer" : "Hombre"}` : ""}
               </p>
             </div>
 
@@ -367,9 +420,13 @@ export default function CrearPage() {
                   abdominalGrande: zones.abdominalGrande.preview,
                   espaldaGrande: zones.espaldaGrande.preview,
                 }}
-                color={color.value}
+                color={colorHex}
                 side={side}
                 onSideChange={handleSideChange}
+                abdominalTransform={abdominalTransform}
+                onAbdominalTransformChange={setAbdominalTransform}
+                espaldaTransform={espaldaTransform}
+                onEspaldaTransformChange={setEspaldaTransform}
               />
             </div>
 

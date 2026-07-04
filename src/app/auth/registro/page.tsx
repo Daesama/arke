@@ -86,7 +86,7 @@ export default function RegistroPage() {
             Creá tu cuenta
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
-            Empezá a diseñar camisetas con IA
+            Empezá a diseñar tus camisetas
           </p>
         </div>
 

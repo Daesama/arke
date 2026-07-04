@@ -27,9 +27,13 @@ export type DesignCategory = "gaming" | "anime" | "abstracto" | "pop";
 
 export type PrintPosition = "pecho" | "espalda" | "pecho-pequeño";
 
-export type TshirtColor = "negro" | "blanco" | "gris" | "navy";
+export type TshirtColor = "negro" | "blanco" | "gris" | "navy" | (string & {});
 
 export type TshirtSize = "XS" | "S" | "M" | "L" | "XL" | "XXL";
+
+export type TshirtGenero = "mujer" | "hombre";
+
+export type TshirtMaterial = "piel_de_durazno" | "algodon_licrado" | "seda_fria";
 
 export interface Profile {
   id: string;

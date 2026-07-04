@@ -41,10 +41,10 @@ export function Footer() {
               height={28}
             />
             <p className="mt-4 text-sm text-text-muted">
-              Camisetas personalizadas con IA. Imaginalo, la IA lo crea, tú lo vistes.
+              Camisetas personalizadas con tu propio diseño. Subí tu imagen y nosotros la estampamos.
             </p>
             <p className="mt-2 font-mono text-xs uppercase tracking-widest text-cyan/60">
-              Del Prompt al Estampado
+              Tu Diseño, Tu Estilo
             </p>
           </div>
 

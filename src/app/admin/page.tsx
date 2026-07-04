@@ -5,7 +5,7 @@ const stats = [
   { label: "Pedidos totales", value: "0", icon: Package, color: "text-cyan" },
   { label: "Ingresos", value: "$0", icon: DollarSign, color: "text-green-400" },
   { label: "Usuarios", value: "0", icon: Users, color: "text-violet" },
-  { label: "Diseños generados", value: "0", icon: ImageIcon, color: "text-magenta" },
+  { label: "Diseños subidos", value: "0", icon: ImageIcon, color: "text-magenta" },
 ];
 
 export default function AdminDashboard() {
