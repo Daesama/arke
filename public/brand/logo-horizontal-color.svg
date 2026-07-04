@@ -1,0 +1,29 @@
+<svg width="600" height="160" viewBox="0 0 600 160" xmlns="http://www.w3.org/2000/svg">
+  <!-- Wing fragments - left side (compact) -->
+  <g opacity="0.9">
+    <polygon points="40,120 60,30 76,54" fill="#00F0FF" opacity="0.85"/>
+    <polygon points="35,114 52,38 44,68" fill="#8B5CF6" opacity="0.7"/>
+    <polygon points="50,110 60,50 66,70" fill="#FF2D95" opacity="0.55"/>
+    <rect x="28" y="82" width="6" height="6" fill="#00F0FF" opacity="0.35" transform="rotate(15 31 85)"/>
+    <rect x="22" y="96" width="4" height="4" fill="#8B5CF6" opacity="0.25" transform="rotate(30 24 98)"/>
+    <rect x="32" y="60" width="5" height="5" fill="#FF2D95" opacity="0.2" transform="rotate(-10 34 62)"/>
+  </g>
+
+  <!-- Wing fragments - right side (compact) -->
+  <g opacity="0.9">
+    <polygon points="150,120 130,30 114,54" fill="#00F0FF" opacity="0.85"/>
+    <polygon points="155,114 138,38 146,68" fill="#8B5CF6" opacity="0.7"/>
+    <polygon points="140,110 130,50 124,70" fill="#FF2D95" opacity="0.55"/>
+    <rect x="156" y="82" width="6" height="6" fill="#00F0FF" opacity="0.35" transform="rotate(-15 159 85)"/>
+    <rect x="164" y="96" width="4" height="4" fill="#8B5CF6" opacity="0.25" transform="rotate(-30 166 98)"/>
+    <rect x="158" y="60" width="5" height="5" fill="#FF2D95" opacity="0.2" transform="rotate(10 160 62)"/>
+  </g>
+
+  <!-- Central core -->
+  <circle cx="95" cy="52" r="10" fill="none" stroke="#00F0FF" stroke-width="1.5"/>
+  <circle cx="95" cy="52" r="4" fill="#ffffff" opacity="0.95"/>
+  <circle cx="95" cy="52" r="16" fill="none" stroke="#8B5CF6" stroke-width="0.4" opacity="0.2"/>
+
+  <!-- ARKE text -->
+  <text x="210" y="95" fill="#EEEEF0" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="500" letter-spacing="14">ARKE</text>
+</svg>
