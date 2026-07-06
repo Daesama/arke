@@ -130,7 +130,7 @@ export function useChat(): UseChatReturn {
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         console.error("Chat error:", err);
-        setError("Error en el chat. Intentá de nuevo.");
+        setError("Error en el chat. Intenta de nuevo.");
         setMessages((prev) => prev.filter((m) => m.id !== assistantMsg.id));
       } finally {
         setIsLoading(false);
@@ -167,7 +167,7 @@ export function useChat(): UseChatReturn {
       }
     } catch (err) {
       console.error("Generate error:", err);
-      setError("Error generando el diseño. Intentá de nuevo.");
+      setError("Error generando el diseño. Intenta de nuevo.");
     } finally {
       setIsGenerating(false);
     }

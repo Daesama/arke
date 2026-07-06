@@ -3,19 +3,24 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { Menu, X, ShoppingCart } from "lucide-react";
+import { Menu, X, ShoppingCart, LogIn } from "lucide-react";
 import { NAV_LINKS } from "@/lib/utils/constants";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { useCartStore } from "@/stores/cartStore";
+import { createClient } from "@/lib/supabase/client";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const totalItems = useCartStore((s) => s.totalItems());
   const [mounted, setMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => setIsLoggedIn(!!data.user));
   }, []);
 
   return (
@@ -52,6 +57,16 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
+          {mounted && isLoggedIn === false && (
+            <Link
+              href="/auth/login"
+              className="hidden items-center gap-1.5 rounded-lg border border-elevated px-3 py-1.5 text-sm text-text-secondary transition-colors hover:border-cyan/30 hover:bg-cyan/5 hover:text-cyan sm:flex"
+            >
+              <LogIn className="h-4 w-4" />
+              Iniciar sesión
+            </Link>
+          )}
+
           <Link
             href="/carrito"
             className="relative rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
@@ -97,6 +112,16 @@ export function Header() {
               {link.label}
             </Link>
           ))}
+          {mounted && isLoggedIn === false && (
+            <Link
+              href="/auth/login"
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm text-cyan transition-colors hover:bg-surface"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <LogIn className="h-4 w-4" />
+              Iniciar sesión
+            </Link>
+          )}
           <Link href="/crear" onClick={() => setMobileMenuOpen(false)}>
             <Button size="sm" className="mt-2 w-full">
               Crear diseño

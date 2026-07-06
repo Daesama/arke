@@ -30,7 +30,7 @@ export async function POST(req: Request) {
           role: "user" as const,
           content: [
             { type: "image" as const, source: { type: "base64" as const, media_type: mediaType, data } },
-            { type: "text" as const, text: msg.content || "Usá esta imagen como referencia para el diseño." },
+            { type: "text" as const, text: msg.content || "Usa esta imagen como referencia para el diseño." },
           ],
         };
       }
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data } },
-            { type: "text", text: lastMsg.content || "Usá esta imagen como referencia para el diseño." },
+            { type: "text", text: lastMsg.content || "Usa esta imagen como referencia para el diseño." },
           ],
         };
       }
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Chat error:", error);
     return new Response(
-      JSON.stringify({ error: "Error en el chat. Intentá de nuevo." }),
+      JSON.stringify({ error: "Error en el chat. Intenta de nuevo." }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }

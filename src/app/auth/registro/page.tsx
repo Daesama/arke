@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function RegistroPage() {
   const [fullName, setFullName] = useState("");
@@ -16,6 +16,8 @@ export default function RegistroPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,13 +59,16 @@ export default function RegistroPage() {
             </svg>
           </div>
           <h1 className="font-heading text-2xl font-medium text-text-primary">
-            ¡Revisá tu email!
+            ¡Revisa tu email!
           </h1>
           <p className="mt-3 text-sm text-text-secondary">
             Te enviamos un link de confirmación a <strong className="text-text-primary">{email}</strong>.
-            Hacé click para activar tu cuenta.
+            Haz clic para activar tu cuenta.
           </p>
-          <Link href="/auth/login" className="mt-6 inline-block text-sm text-cyan hover:underline">
+          <Link
+            href={`/auth/login${redirect ? `?redirect=${redirect}` : ""}`}
+            className="mt-6 inline-block text-sm text-cyan hover:underline"
+          >
             Volver al login
           </Link>
         </div>
@@ -83,10 +88,10 @@ export default function RegistroPage() {
             className="mx-auto mb-4"
           />
           <h1 className="font-heading text-2xl font-medium text-text-primary">
-            Creá tu cuenta
+            Crea tu cuenta
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
-            Empezá a diseñar tus camisetas
+            Empieza a diseñar tus camisetas
           </p>
         </div>
 
@@ -132,9 +137,12 @@ export default function RegistroPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-text-muted">
-          ¿Ya tenés cuenta?{" "}
-          <Link href="/auth/login" className="text-cyan hover:underline">
-            Ingresá
+          ¿Ya tienes cuenta?{" "}
+          <Link
+            href={`/auth/login${redirect ? `?redirect=${redirect}` : ""}`}
+            className="text-cyan hover:underline"
+          >
+            Ingresa
           </Link>
         </p>
       </div>

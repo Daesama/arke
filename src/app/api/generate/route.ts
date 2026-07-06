@@ -86,8 +86,8 @@ export async function POST(req: Request) {
       (typeof err.message === "string" && err.message.includes("safety system"));
 
     const userMessage = isModeration
-      ? "El diseño fue bloqueado por el filtro de seguridad. Intentá con otra descripción."
-      : "Error generando el diseño. Intentá de nuevo.";
+      ? "El diseño fue bloqueado por el filtro de seguridad. Intenta con otra descripción."
+      : "Error generando el diseño. Intenta de nuevo.";
 
     return NextResponse.json({ error: userMessage }, { status: 500 });
   }

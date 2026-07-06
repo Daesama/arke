@@ -4,8 +4,16 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { createClient } from "@/lib/supabase/client";
-import { ORDER_STATUSES, TSHIRT_MATERIALS } from "@/lib/utils/constants";
-import { Download, ChevronDown, ChevronUp } from "lucide-react";
+import { ORDER_STATUSES } from "@/lib/utils/constants";
+import {
+  Download,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
+  Image,
+  Scissors,
+} from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { Order, OrderItem, OrderStatus } from "@/types/database";
 
@@ -19,11 +27,365 @@ const MATERIAL_LABELS: Record<string, string> = {
   seda_fria: "Seda Fría",
 };
 
+const GENERO_LABELS: Record<string, string> = {
+  hombre: "Hombre",
+  mujer: "Mujer",
+};
+
+const PAYMENT_STATUS_LABELS: Record<
+  string,
+  { label: string; color: string }
+> = {
+  pending: { label: "Pendiente", color: "text-yellow-400" },
+  approved: { label: "Aprobado", color: "text-green-400" },
+  declined: { label: "Rechazado", color: "text-red-400" },
+  voided: { label: "Anulado", color: "text-red-400" },
+  error: { label: "Error", color: "text-magenta" },
+};
+
 const ZONE_LABELS: Record<string, string> = {
   pechoBolsillo: "Pecho bolsillo",
-  abdominalGrande: "Abdominal grande",
+  abdominalGrande: "Pecho grande",
   espaldaGrande: "Espalda grande",
 };
+
+const COLOR_NAMES: Record<string, string> = {
+  "#1a1a1a": "Negro",
+  "#1a1a2e": "Negro",
+  "#f5f5f5": "Blanco",
+  "#f0f0f0": "Blanco",
+  "#6b7280": "Gris",
+  "#808080": "Gris",
+  "#1e3a5f": "Navy",
+  negro: "Negro",
+  blanco: "Blanco",
+  gris: "Gris",
+  navy: "Navy",
+};
+
+interface OrganizedData {
+  folder?: string;
+  zone_urls?: Record<string, string>;
+  mockup_urls?: Record<string, string>;
+}
+
+function getSnapshot(item: OrderItem) {
+  const s = item.design_snapshot as Record<string, unknown> | null;
+  const config = s?.config as Record<
+    string,
+    { imageUrl?: string; enabled?: boolean }
+  > | null;
+
+  return {
+    genero: (s?.genero as string) ?? null,
+    material: (s?.material as string) ?? null,
+    color: (s?.color as string) ?? item.color,
+    talla: (s?.talla as string) ?? item.size,
+    zones: config,
+    organized: (s?.organized as OrganizedData) ?? null,
+  };
+}
+
+function getActiveZones(
+  zones: Record<string, { imageUrl?: string; enabled?: boolean }> | null,
+): string[] {
+  if (!zones) return [];
+  return Object.entries(zones)
+    .filter(([, v]) => v?.enabled && v?.imageUrl)
+    .map(([k]) => ZONE_LABELS[k] ?? k);
+}
+
+function buildSummaryText(order: OrderWithItems, item: OrderItem): string {
+  const snap = getSnapshot(item);
+  const colorName = COLOR_NAMES[snap.color?.toLowerCase() ?? ""] ?? snap.color;
+  const colorHex = snap.color?.startsWith("#") ? ` (${snap.color})` : "";
+  const activeZones = getActiveZones(snap.zones);
+
+  const lines = [
+    `PEDIDO ARKE-${order.order_number}`,
+    "",
+    `Genero: ${snap.genero ? (GENERO_LABELS[snap.genero] ?? snap.genero) : "-"}`,
+    `Material: ${snap.material ? (MATERIAL_LABELS[snap.material] ?? snap.material) : "-"}`,
+    `Color: ${colorName}${colorHex}`,
+    `Talla: ${snap.talla ?? "-"}`,
+    `Cantidad: ${item.quantity}`,
+    `Zonas: ${activeZones.length > 0 ? activeZones.join(", ") : "Ninguna"}`,
+    "",
+    "DATOS DEL CLIENTE",
+    `Nombre: ${order.shipping_name}`,
+    `WhatsApp: ${order.shipping_phone}`,
+    `Direccion: ${order.shipping_address}`,
+    `Localidad: ${order.shipping_city}, ${order.shipping_department}`,
+  ];
+
+  if (order.shipping_notes) {
+    lines.push(`Notas: ${order.shipping_notes}`);
+  }
+
+  return lines.join("\n");
+}
+
+function DownloadButton({
+  href,
+  label,
+}: {
+  href: string;
+  label: string;
+}) {
+  return (
+    <a
+      href={href}
+      download
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 rounded-lg border border-cyan/30 bg-cyan/5 px-3 py-1.5 text-xs font-medium text-cyan transition-colors hover:bg-cyan/10"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Download className="h-3.5 w-3.5" />
+      {label}
+    </a>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className={cn(
+        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+        copied
+          ? "border-green-400/30 bg-green-400/10 text-green-400"
+          : "border-cyan/30 bg-cyan/5 text-cyan hover:bg-cyan/10",
+      )}
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
+      {copied ? "Copiado" : "Copiar resumen"}
+    </button>
+  );
+}
+
+function OrderDetail({
+  order,
+  item,
+}: {
+  order: OrderWithItems;
+  item: OrderItem;
+}) {
+  const snap = getSnapshot(item);
+  const activeZones = getActiveZones(snap.zones);
+  const colorHex = snap.color?.startsWith("#") ? snap.color : null;
+  const colorName =
+    COLOR_NAMES[snap.color?.toLowerCase() ?? ""] ??
+    (colorHex ? colorHex : snap.color);
+
+  const summaryText = buildSummaryText(order, item);
+
+  return (
+    <div className="space-y-4">
+      {/* ─── Resumen del pedido ─── */}
+      <div className="rounded-lg border border-elevated bg-surface p-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-heading text-sm font-medium text-cyan">
+            Resumen del pedido
+          </h3>
+          <CopyButton text={summaryText} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-5">
+          <div>
+            <span className="text-text-muted">Genero</span>
+            <p className="mt-0.5 font-medium capitalize text-text-primary">
+              {snap.genero
+                ? (GENERO_LABELS[snap.genero] ?? snap.genero)
+                : "-"}
+            </p>
+          </div>
+          <div>
+            <span className="text-text-muted">Material</span>
+            <p className="mt-0.5 font-medium text-text-primary">
+              {snap.material
+                ? (MATERIAL_LABELS[snap.material] ?? snap.material)
+                : "-"}
+            </p>
+          </div>
+          <div>
+            <span className="text-text-muted">Color</span>
+            <div className="mt-0.5 flex items-center gap-1.5">
+              <span
+                className="inline-block h-4 w-4 rounded-full border border-elevated"
+                style={{
+                  backgroundColor: colorHex ?? `var(--color-${snap.color}, #888)`,
+                }}
+              />
+              <span className="font-medium text-text-primary">
+                {colorName}
+              </span>
+            </div>
+          </div>
+          <div>
+            <span className="text-text-muted">Talla</span>
+            <p className="mt-0.5 font-mono font-medium text-text-primary">
+              {snap.talla ?? "-"}
+            </p>
+          </div>
+          <div>
+            <span className="text-text-muted">Cantidad</span>
+            <p className="mt-0.5 font-mono font-medium text-text-primary">
+              {item.quantity}
+            </p>
+          </div>
+        </div>
+
+        {activeZones.length > 0 && (
+          <div className="mt-3">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted">
+              Zonas activas
+            </span>
+            <p className="mt-0.5 text-xs text-text-primary">
+              {activeZones.join(", ")}
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4 border-t border-elevated pt-3">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted">
+            Datos del cliente
+          </span>
+          <div className="mt-1 space-y-0.5 text-xs text-text-secondary">
+            <p className="font-medium text-text-primary">
+              {order.shipping_name}
+            </p>
+            <p>WhatsApp: {order.shipping_phone}</p>
+            <p>{order.shipping_address}</p>
+            <p>
+              {order.shipping_city}, {order.shipping_department}
+            </p>
+            {order.shipping_notes && (
+              <p className="text-text-muted">
+                Notas: {order.shipping_notes}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Maqueta para el proveedor ─── */}
+      {snap.organized?.mockup_urls &&
+        Object.keys(snap.organized.mockup_urls).length > 0 && (
+          <div className="rounded-lg border border-elevated bg-surface p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Image className="h-4 w-4 text-cyan" />
+              <h3 className="font-heading text-sm font-medium text-cyan">
+                Maqueta para el proveedor
+              </h3>
+            </div>
+            <p className="mb-3 text-[11px] text-text-muted">
+              Preview completo con los diseños posicionados sobre la
+              camiseta.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              {snap.organized.mockup_urls.frente && (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="relative h-40 w-32 overflow-hidden rounded-lg border border-elevated bg-void">
+                    <img
+                      src={snap.organized.mockup_urls.frente}
+                      alt="Mockup frente"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <span className="text-[10px] text-text-muted">
+                    Frente
+                  </span>
+                  <DownloadButton
+                    href={snap.organized.mockup_urls.frente}
+                    label="Descargar"
+                  />
+                </div>
+              )}
+              {snap.organized.mockup_urls.espalda && (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="relative h-40 w-32 overflow-hidden rounded-lg border border-elevated bg-void">
+                    <img
+                      src={snap.organized.mockup_urls.espalda}
+                      alt="Mockup espalda"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <span className="text-[10px] text-text-muted">
+                    Espalda
+                  </span>
+                  <DownloadButton
+                    href={snap.organized.mockup_urls.espalda}
+                    label="Descargar"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+      {/* ─── Imágenes originales para estampar ─── */}
+      {snap.zones && (
+        <div className="rounded-lg border border-elevated bg-surface p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Scissors className="h-4 w-4 text-cyan" />
+            <h3 className="font-heading text-sm font-medium text-cyan">
+              Imagenes originales para estampar
+            </h3>
+          </div>
+          <p className="mb-3 text-[11px] text-text-muted">
+            Imagenes puras de cada zona para enviar al estampador.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            {Object.entries(snap.zones).map(([zoneKey, zoneData]) => {
+              if (!zoneData?.enabled || !zoneData?.imageUrl) return null;
+
+              const organizedUrl =
+                snap.organized?.zone_urls?.[zoneKey];
+              const downloadUrl = organizedUrl ?? zoneData.imageUrl;
+
+              return (
+                <div
+                  key={zoneKey}
+                  className="flex flex-col items-center gap-2"
+                >
+                  <div className="relative h-24 w-24 overflow-hidden rounded-lg border border-elevated bg-void">
+                    <img
+                      src={zoneData.imageUrl}
+                      alt={ZONE_LABELS[zoneKey] ?? zoneKey}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <span className="text-[10px] font-medium text-text-muted">
+                    {ZONE_LABELS[zoneKey] ?? zoneKey}
+                  </span>
+                  <DownloadButton
+                    href={downloadUrl}
+                    label="Descargar"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminPedidosPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -48,9 +410,11 @@ export default function AdminPedidosPage() {
     <div className="p-6 lg:p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-medium text-cyan">Pedidos</h1>
+          <h1 className="font-heading text-2xl font-medium text-cyan">
+            Pedidos
+          </h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Gestión de todos los pedidos
+            Gestion de todos los pedidos
           </p>
         </div>
       </div>
@@ -60,10 +424,12 @@ export default function AdminPedidosPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-elevated text-text-muted">
-                <th className="pb-3 font-medium">Número</th>
+                <th className="pb-3 font-medium">Numero</th>
                 <th className="pb-3 font-medium">Cliente</th>
                 <th className="pb-3 font-medium">Estado</th>
+                <th className="pb-3 font-medium">Pago</th>
                 <th className="pb-3 font-medium">Total</th>
+                <th className="pb-3 font-medium">Referencia</th>
                 <th className="pb-3 font-medium">Fecha</th>
                 <th className="pb-3 font-medium" />
               </tr>
@@ -71,40 +437,79 @@ export default function AdminPedidosPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-text-muted">
+                  <td
+                    colSpan={8}
+                    className="py-8 text-center text-text-muted"
+                  >
                     Cargando pedidos...
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-text-muted">
-                    No hay pedidos aún.
+                  <td
+                    colSpan={8}
+                    className="py-8 text-center text-text-muted"
+                  >
+                    No hay pedidos aun.
                   </td>
                 </tr>
               ) : (
                 orders.map((order) => {
-                  const status = ORDER_STATUSES[order.status as OrderStatus];
+                  const status =
+                    ORDER_STATUSES[order.status as OrderStatus];
+                  const paymentInfo =
+                    PAYMENT_STATUS_LABELS[order.payment_status];
                   const isExpanded = expandedOrder === order.id;
 
                   return (
                     <tr key={order.id} className="group">
-                      <td colSpan={6} className="p-0">
+                      <td colSpan={8} className="p-0">
                         <div
                           className="flex cursor-pointer items-center border-b border-elevated px-4 py-3 transition-colors hover:bg-deep"
-                          onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                          onClick={() =>
+                            setExpandedOrder(
+                              isExpanded ? null : order.id,
+                            )
+                          }
                         >
-                          <span className="w-24 font-mono text-text-primary">#{order.order_number}</span>
-                          <span className="w-40 text-text-secondary">{order.shipping_name}</span>
-                          <span className="w-32">
-                            <Badge variant="muted" className={status?.color}>
+                          <span className="w-24 font-mono text-text-primary">
+                            #{order.order_number}
+                          </span>
+                          <span className="w-40 text-text-secondary">
+                            {order.shipping_name}
+                          </span>
+                          <span className="w-28">
+                            <Badge
+                              variant="muted"
+                              className={status?.color}
+                            >
                               {status?.label ?? order.status}
                             </Badge>
                           </span>
-                          <span className="w-32 font-mono text-text-primary">
+                          <span className="w-28">
+                            <Badge
+                              variant="muted"
+                              className={paymentInfo?.color}
+                            >
+                              {paymentInfo?.label ??
+                                order.payment_status}
+                            </Badge>
+                          </span>
+                          <span className="w-28 font-mono text-text-primary">
                             ${order.total.toLocaleString("es-CO")}
                           </span>
+                          <span
+                            className="w-36 truncate font-mono text-xs text-text-muted"
+                            title={
+                              order.payment_reference ?? ""
+                            }
+                          >
+                            {order.payment_reference ?? "—"}
+                          </span>
                           <span className="flex-1 text-text-muted">
-                            {new Date(order.created_at).toLocaleDateString("es-CO")}
+                            {new Date(
+                              order.created_at,
+                            ).toLocaleDateString("es-CO")}
                           </span>
                           {isExpanded ? (
                             <ChevronUp className="h-4 w-4 text-text-muted" />
@@ -115,99 +520,15 @@ export default function AdminPedidosPage() {
 
                         {isExpanded && (
                           <div className="border-b border-elevated bg-deep/50 px-4 py-4">
-                            {order.order_items.map((item) => {
-                              const config = item.design_snapshot?.config as Record<string, unknown> | undefined;
-                              const genero = config?.genero as string | undefined;
-                              const materialKey = config?.material as string | undefined;
-                              const color = (config?.color ?? item.color) as string;
-                              const talla = (config?.talla ?? item.size) as string;
-                              const zones = config?.zones as Record<string, { imageUrl?: string; enabled?: boolean }> | undefined;
-
-                              return (
-                                <div key={item.id} className="rounded-lg border border-elevated bg-surface p-4">
-                                  <div className="flex flex-wrap gap-4 text-xs">
-                                    {/* Género */}
-                                    <div>
-                                      <span className="text-text-muted">Género</span>
-                                      <p className="mt-0.5 font-medium text-text-primary capitalize">
-                                        {genero ?? "—"}
-                                      </p>
-                                    </div>
-
-                                    {/* Material */}
-                                    <div>
-                                      <span className="text-text-muted">Material</span>
-                                      <p className="mt-0.5 font-medium text-text-primary">
-                                        {materialKey ? (MATERIAL_LABELS[materialKey] ?? materialKey) : "—"}
-                                      </p>
-                                    </div>
-
-                                    {/* Color */}
-                                    <div>
-                                      <span className="text-text-muted">Color</span>
-                                      <div className="mt-0.5 flex items-center gap-1.5">
-                                        <span
-                                          className="inline-block h-4 w-4 rounded-full border border-elevated"
-                                          style={{ backgroundColor: color.startsWith("#") ? color : `var(--color-${color}, #888)` }}
-                                        />
-                                        <span className="font-medium text-text-primary capitalize">{color}</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Talla */}
-                                    <div>
-                                      <span className="text-text-muted">Talla</span>
-                                      <p className="mt-0.5 font-mono font-medium text-text-primary">{talla}</p>
-                                    </div>
-
-                                    {/* Cantidad */}
-                                    <div>
-                                      <span className="text-text-muted">Cantidad</span>
-                                      <p className="mt-0.5 font-mono font-medium text-text-primary">{item.quantity}</p>
-                                    </div>
-                                  </div>
-
-                                  {/* Zone images */}
-                                  {zones && (
-                                    <div className="mt-4">
-                                      <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted">
-                                        Zonas de estampado
-                                      </span>
-                                      <div className="mt-2 flex flex-wrap gap-3">
-                                        {Object.entries(zones).map(([zoneKey, zoneData]) => {
-                                          if (!zoneData?.enabled || !zoneData?.imageUrl) return null;
-                                          return (
-                                            <div key={zoneKey} className="flex flex-col items-center gap-1.5">
-                                              <div className="relative h-20 w-20 overflow-hidden rounded-lg border border-elevated bg-void">
-                                                <img
-                                                  src={zoneData.imageUrl}
-                                                  alt={ZONE_LABELS[zoneKey] ?? zoneKey}
-                                                  className="h-full w-full object-contain"
-                                                />
-                                              </div>
-                                              <span className="text-[10px] text-text-muted">
-                                                {ZONE_LABELS[zoneKey] ?? zoneKey}
-                                              </span>
-                                              <a
-                                                href={zoneData.imageUrl}
-                                                download
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-1 rounded-md border border-elevated px-2 py-0.5 text-[10px] text-cyan transition-colors hover:bg-cyan/10"
-                                                onClick={(e) => e.stopPropagation()}
-                                              >
-                                                <Download className="h-3 w-3" />
-                                                Descargar
-                                              </a>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                            <div className="space-y-4">
+                              {order.order_items.map((item) => (
+                                <OrderDetail
+                                  key={item.id}
+                                  order={order}
+                                  item={item}
+                                />
+                              ))}
+                            </div>
                           </div>
                         )}
                       </td>

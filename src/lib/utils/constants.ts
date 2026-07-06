@@ -1,7 +1,7 @@
 export const SITE_NAME = "ARKE";
 export const SITE_TAGLINE = "Tu Diseño, Tu Estilo";
 export const SITE_DESCRIPTION =
-  "Camisetas personalizadas con tu propio diseño. Subí tu imagen, elegí tu camiseta y recibila en tu puerta.";
+  "Camisetas personalizadas con tu propio diseño. Sube tu imagen, elige tu camiseta y recíbela en tu puerta.";
 
 export const NAV_LINKS = [
   { label: "Inicio", href: "/" },

@@ -18,7 +18,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   function handleSend() {
     const trimmed = value.trim();
     if ((!trimmed && !imagePreview) || disabled) return;
-    onSend(trimmed || "Usá esta imagen como referencia.", imagePreview ?? undefined);
+    onSend(trimmed || "Usa esta imagen como referencia.", imagePreview ?? undefined);
     setValue("");
     setImagePreview(null);
     if (textareaRef.current) {

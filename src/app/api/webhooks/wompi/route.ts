@@ -3,24 +3,25 @@ import { verifyWompiSignature } from "@/lib/wompi/webhook";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: Request) {
+  const body = await req.text();
+  const signature = req.headers.get("x-event-checksum") ?? "";
+  const timestamp = req.headers.get("x-event-timestamp") ?? "";
+
+  if (!verifyWompiSignature(body, signature, timestamp)) {
+    console.error("Wompi webhook: invalid signature");
+    return NextResponse.json({ received: true });
+  }
+
   try {
-    const body = await req.text();
-    const signature = req.headers.get("x-event-checksum") ?? "";
-    const timestamp = req.headers.get("x-event-timestamp") ?? "";
-
-    if (!verifyWompiSignature(body, signature, timestamp)) {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    }
-
     const event = JSON.parse(body);
     const transaction = event.data?.transaction;
 
     if (!transaction) {
-      return NextResponse.json({ error: "No transaction data" }, { status: 400 });
+      return NextResponse.json({ received: true });
     }
 
     const supabase = createAdminClient();
-    const paymentRef = transaction.reference;
+    const reference = transaction.reference;
     const status = transaction.status;
 
     let paymentStatus: string;
@@ -52,15 +53,13 @@ export async function POST(req: Request) {
       .from("orders")
       .update({
         payment_status: paymentStatus,
-        payment_reference: transaction.id,
         status: orderStatus,
         ...(status === "APPROVED" && { paid_at: new Date().toISOString() }),
       })
-      .eq("payment_reference", paymentRef);
-
-    return NextResponse.json({ received: true });
+      .eq("payment_reference", reference);
   } catch (error) {
-    console.error("Webhook error:", error);
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
+    console.error("Wompi webhook processing error:", error);
   }
+
+  return NextResponse.json({ received: true });
 }

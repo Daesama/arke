@@ -9,21 +9,21 @@ import { Button } from "@/components/ui/Button";
 const steps = [
   {
     icon: Upload,
-    title: "Subí tu diseño",
+    title: "Sube tu diseño",
     description:
-      "Cargá tu imagen (JPG, PNG, WebP) y elegí en qué zona de la camiseta la querés estampar.",
+      "Carga tu imagen (JPG, PNG, WebP) y elige en qué zona de la camiseta la quieres estampar.",
   },
   {
     icon: Palette,
-    title: "Personalizá tu camiseta",
+    title: "Personaliza tu camiseta",
     description:
-      "Elegí color, talla y posición del estampado. Previsualizá cómo queda en tiempo real.",
+      "Elige color, talla y posición del estampado. Previsualiza cómo queda en tiempo real.",
   },
   {
     icon: Truck,
     title: "Te la enviamos",
     description:
-      "Hacé tu pedido y recibí tu camiseta personalizada en la puerta de tu casa.",
+      "Haz tu pedido y recibe tu camiseta personalizada en la puerta de tu casa.",
   },
 ];
 
@@ -73,7 +73,7 @@ export default function Home() {
           transition={{ delay: 0.3, duration: 0.5 }}
           className="max-w-3xl font-heading text-3xl font-medium leading-tight text-text-primary sm:text-4xl md:text-5xl"
         >
-          Vos diseñás.{" "}
+          Tú diseñas.{" "}
           <span className="text-cyan">Nosotros estampamos.</span>
         </motion.h1>
 
@@ -83,7 +83,7 @@ export default function Home() {
           transition={{ delay: 0.45, duration: 0.5 }}
           className="mt-6 max-w-xl text-base text-text-secondary sm:text-lg"
         >
-          Subí tu imagen, elegí tu camiseta y recibila en tu puerta.
+          Sube tu imagen, elige tu camiseta y recíbela en tu puerta.
           Así de simple.
         </motion.p>
 
@@ -110,7 +110,7 @@ export default function Home() {
           className="absolute bottom-8 text-text-muted"
         >
           <div className="flex flex-col items-center gap-2">
-            <span className="text-xs">Scrolleá para saber más</span>
+            <span className="text-xs">Baja para saber más</span>
             <div className="h-8 w-px bg-gradient-to-b from-elevated to-transparent" />
           </div>
         </motion.div>
@@ -189,7 +189,7 @@ export default function Home() {
               custom={1}
               className="mt-4 text-text-secondary"
             >
-              Subí tu diseño, elegí cómo lo querés y nosotros nos encargamos del
+              Sube tu diseño, elige cómo lo quieres y nosotros nos encargamos del
               resto.
             </motion.p>
             <motion.div variants={fadeUp} custom={2} className="mt-8">

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +34,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/crear");
+    router.push(redirect || "/crear");
     router.refresh();
   }
 
@@ -51,7 +53,7 @@ export default function LoginPage() {
             Bienvenido de vuelta
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
-            Ingresá a tu cuenta para seguir creando
+            Ingresa a tu cuenta para seguir creando
           </p>
         </div>
 
@@ -87,9 +89,12 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-text-muted">
-          ¿No tenés cuenta?{" "}
-          <Link href="/auth/registro" className="text-cyan hover:underline">
-            Registrate
+          ¿No tienes cuenta?{" "}
+          <Link
+            href={`/auth/registro${redirect ? `?redirect=${redirect}` : ""}`}
+            className="text-cyan hover:underline"
+          >
+            Regístrate
           </Link>
         </p>
       </div>

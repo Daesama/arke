@@ -30,7 +30,7 @@ export default function CatalogoPage() {
           Diseños pre-hechos
         </h1>
         <p className="mt-2 text-sm text-text-secondary">
-          Diseños creados por ARKE listos para estampar. Elegí uno y personalizá tu camiseta.
+          Diseños creados por ARKE listos para estampar. Elige uno y personaliza tu camiseta.
         </p>
       </div>
 
@@ -78,7 +78,7 @@ export default function CatalogoPage() {
           Pronto habrá diseños acá
         </p>
         <p className="mt-2 max-w-sm text-sm text-text-secondary">
-          Estamos preparando una colección increíble. Mientras tanto, podés subir tu propio diseño.
+          Estamos preparando una colección increíble. Mientras tanto, puedes subir tu propio diseño.
         </p>
         <Button className="mt-6" size="md" onClick={() => window.location.href = "/crear"}>
           Crear mi diseño

@@ -9,10 +9,10 @@ import { MaterialSelector } from "@/components/design/MaterialSelector";
 import { Button } from "@/components/ui/Button";
 import { ShoppingCart, Settings2, Eye, LogIn } from "lucide-react";
 import { ColorPicker } from "@/components/design/ColorPicker";
-import { calculatePrice, getPriceBreakdown, formatCOP } from "@/lib/utils/pricing";
+import { getDesglose, calcularSubtotal, formatCOP } from "@/lib/utils/pricing";
 import { useCartStore } from "@/stores/cartStore";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
+import { uploadDesignAndSave } from "./actions";
 import type { TshirtColor, TshirtSize, TshirtGenero, TshirtMaterial } from "@/types/database";
 import type { DesignZone, DesignZoneConfig, ZoneTransform } from "@/types/design";
 import Link from "next/link";
@@ -32,7 +32,7 @@ const PRESET_COLORS: ColorOption[] = [
 
 const ZONES: { key: DesignZone; label: string; description: string; side: "front" | "back" }[] = [
   { key: "pechoBolsillo", label: "Pecho bolsillo", description: "Pequeña, arriba a la izquierda (~10×10 cm)", side: "front" },
-  { key: "abdominalGrande", label: "Abdominal grande", description: "Grande, centro del frente (~30×35 cm)", side: "front" },
+  { key: "abdominalGrande", label: "Pecho grande", description: "Grande, centro del frente (~30×35 cm)", side: "front" },
   { key: "espaldaGrande", label: "Espalda grande", description: "Grande, centrada en la espalda (~30×35 cm)", side: "back" },
 ];
 
@@ -48,6 +48,29 @@ const emptyZones: ZonesMap = {
   abdominalGrande: { file: null, preview: null },
   espaldaGrande: { file: null, preview: null },
 };
+
+function fileToBase64Thumbnail(file: File, maxSize = 200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas context unavailable"));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/webp", 0.7));
+      };
+      img.onerror = reject;
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function CrearPage() {
   const [genero, setGenero] = useState<TshirtGenero | null>(null);
@@ -65,6 +88,7 @@ export default function CrearPage() {
   const [espaldaTransform, setEspaldaTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [isUploading, setIsUploading] = useState(false);
   const [added, setAdded] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const addItem = useCartStore((s) => s.addItem);
 
   const hasAnyImage = zones.pechoBolsillo.file || zones.abdominalGrande.file || zones.espaldaGrande.file;
@@ -75,8 +99,8 @@ export default function CrearPage() {
   if (zones.pechoBolsillo.file) activeZones.push("pechoBolsillo");
   if (zones.abdominalGrande.file) activeZones.push("abdominalGrande");
   if (zones.espaldaGrande.file) activeZones.push("espaldaGrande");
-  const priceBreakdown = getPriceBreakdown(activeZones);
-  const totalPrice = calculatePrice(activeZones);
+  const breakdown = getDesglose(material, genero, activeZones);
+  const subtotal = genero && material ? calcularSubtotal(material, genero, activeZones) : 0;
 
   const handleFileSelect = useCallback((zone: DesignZone, file: File) => {
     const preview = URL.createObjectURL(file);
@@ -100,86 +124,89 @@ export default function CrearPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   async function handleAddToCart() {
+    console.log("[Crear] Click agregar al carrito");
+    console.log("[Crear] Config:", { genero, material, color: colorSlug, talla: size });
+    console.log("[Crear] Zonas:", {
+      pechoBolsillo: !!zones.pechoBolsillo.file,
+      abdominalGrande: !!zones.abdominalGrande.file,
+      espaldaGrande: !!zones.espaldaGrande.file,
+    });
+
     if (!canAddToCart || isUploading) return;
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-
+    setUploadError(null);
     setIsUploading(true);
+
     try {
-      const designId = crypto.randomUUID();
-      const config: DesignZoneConfig = {};
-      let primaryImageUrl = "";
+      const formData = new FormData();
+      formData.set("genero", genero!);
+      formData.set("material", material!);
+      formData.set("color", colorSlug);
+      formData.set("talla", size!);
 
       for (const zone of ZONES) {
         const zoneState = zones[zone.key];
         if (!zoneState.file) continue;
-
-        const ext = zoneState.file.name.split(".").pop() ?? "png";
-        const path = `${user.id}/${designId}/${zone.key}.${ext}`;
-
-        const { error } = await supabase.storage
-          .from("designs")
-          .upload(path, zoneState.file, { contentType: zoneState.file.type });
-
-        if (error) throw error;
-
-        const { data: urlData } = supabase.storage
-          .from("designs")
-          .getPublicUrl(path);
-
-        config[zone.key] = {
-          imageUrl: urlData.publicUrl,
-          enabled: true,
-          ...(zone.key === "abdominalGrande" ? { transform: abdominalTransform } : {}),
-          ...(zone.key === "espaldaGrande" ? { transform: espaldaTransform } : {}),
-        };
-
-        if (!primaryImageUrl) primaryImageUrl = urlData.publicUrl;
+        formData.set(`zone_${zone.key}`, zoneState.file);
+        if (zone.key === "abdominalGrande") {
+          formData.set(`transform_${zone.key}`, JSON.stringify(abdominalTransform));
+        }
+        if (zone.key === "espaldaGrande") {
+          formData.set(`transform_${zone.key}`, JSON.stringify(espaldaTransform));
+        }
       }
 
-      const { error: dbError } = await supabase.from("designs").insert({
-        id: designId,
-        user_id: user.id,
-        prompt: "",
-        image_url: primaryImageUrl,
-        image_path: `${user.id}/${designId}`,
-        config: {
-          genero,
-          material,
-          color: colorSlug,
-          talla: size,
-          zones: config,
-        },
-        is_catalog: false,
-        is_public: false,
-      });
+      console.log("[Crear] Enviando al server action...");
+      const result = await uploadDesignAndSave(formData);
+      console.log("[Crear] Resultado:", result);
 
-      if (dbError) throw dbError;
+      if (result.error) {
+        if (result.error === "Debes iniciar sesión.") {
+          setShowAuthModal(true);
+          setIsUploading(false);
+          return;
+        }
+        setUploadError(result.error);
+        setIsUploading(false);
+        return;
+      }
+
+      const primaryFile =
+        zones.pechoBolsillo.file ??
+        zones.abdominalGrande.file ??
+        zones.espaldaGrande.file;
+      let previewBase64: string | undefined;
+      if (primaryFile) {
+        try {
+          previewBase64 = await fileToBase64Thumbnail(primaryFile);
+        } catch {
+          console.warn("[Crear] No se pudo generar thumbnail");
+        }
+      }
 
       addItem({
         productId: "camiseta-clasica-algodon",
-        designId,
-        designImageUrl: primaryImageUrl,
+        designId: result.designId!,
+        designImageUrl: result.primaryImageUrl!,
         designPrompt: "",
         genero: genero!,
         material: material!,
         color: colorSlug,
         size: size!,
         printPosition: "pecho",
-        designConfig: config,
+        designConfig: result.config as DesignZoneConfig,
+        previewBase64,
         quantity: 1,
-        unitPrice: totalPrice,
+        unitPrice: subtotal,
       });
 
+      console.log("[Crear] Agregado al carrito");
       setAdded(true);
-      setTimeout(() => setAdded(false), 2500);
+      setTimeout(() => setAdded(false), 3000);
     } catch (err) {
-      console.error("Error al subir diseño:", err);
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      console.error("[Crear] Error:", message);
+      setUploadError(message);
     } finally {
       setIsUploading(false);
     }
@@ -188,11 +215,11 @@ export default function CrearPage() {
   function getButtonLabel(): string {
     if (added) return "¡Agregado al carrito!";
     if (isUploading) return "Subiendo imágenes...";
-    if (!genero) return "Elegí un género";
-    if (!material) return "Elegí un material";
-    if (!size) return "Elegí una talla";
-    if (!hasAnyImage) return "Subí al menos una imagen";
-    return `Agregar al carrito — ${formatCOP(totalPrice)}`;
+    if (!genero) return "Elige un género";
+    if (!material) return "Elige un material";
+    if (!size) return "Elige una talla";
+    if (!hasAnyImage) return "Sube al menos una imagen";
+    return `Agregar al carrito — ${formatCOP(subtotal)}`;
   }
 
   return (
@@ -204,16 +231,16 @@ export default function CrearPage() {
               <LogIn className="h-7 w-7" />
             </div>
             <h2 className="font-heading text-xl font-medium text-text-primary">
-              Iniciá sesión para continuar
+              Inicia sesión para continuar
             </h2>
             <p className="mt-2 text-sm text-text-secondary">
-              Necesitás una cuenta para guardar tus diseños y hacer pedidos.
+              Necesitas una cuenta para guardar tus diseños y hacer pedidos.
             </p>
             <div className="mt-6 flex flex-col gap-3">
-              <Link href="/auth/login">
+              <Link href="/auth/login?redirect=/crear">
                 <Button className="w-full">Iniciar sesión</Button>
               </Link>
-              <Link href="/auth/registro">
+              <Link href="/auth/registro?redirect=/crear">
                 <Button variant="secondary" className="w-full">
                   Crear cuenta
                 </Button>
@@ -371,16 +398,34 @@ export default function CrearPage() {
 
           {/* Bottom — Price + Add to cart */}
           <div className="shrink-0 border-t border-elevated bg-void px-3 py-2.5 space-y-2">
-            {hasAnyImage && (
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                  {priceBreakdown.items.map((item) => (
-                    <span key={item.label} className="text-text-muted">
-                      {item.label}: <span className="font-mono">{formatCOP(item.price)}</span>
+            {uploadError && (
+              <div className="rounded-lg border border-magenta/30 bg-magenta/10 px-3 py-2 text-xs text-magenta">
+                {uploadError}
+              </div>
+            )}
+
+            {added && (
+              <div className="rounded-lg border border-cyan/30 bg-cyan/10 px-3 py-2 text-xs text-cyan text-center">
+                ¡Agregado al carrito!
+              </div>
+            )}
+
+            {breakdown.items.length > 0 && (
+              <div className="space-y-1">
+                {breakdown.items.map((line) => (
+                  <div key={line.label} className="flex justify-between text-xs">
+                    <span className={line.type === "estampado" ? "text-cyan" : line.type === "envio" ? "text-text-muted" : "text-text-secondary"}>
+                      {line.label}
                     </span>
-                  ))}
+                    <span className="font-mono text-text-muted">{formatCOP(line.price)}</span>
+                  </div>
+                ))}
+                <div className="border-t border-elevated pt-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium text-text-primary">Total</span>
+                    <span className="font-mono font-medium text-text-primary">{formatCOP(breakdown.total)}</span>
+                  </div>
                 </div>
-                <span className="shrink-0 font-mono font-medium text-cyan">{formatCOP(priceBreakdown.total)}</span>
               </div>
             )}
 

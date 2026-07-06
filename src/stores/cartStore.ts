@@ -17,6 +17,7 @@ export interface CartItem {
   size: TshirtSize;
   printPosition: PrintPosition;
   designConfig?: DesignZoneConfig;
+  previewBase64?: string;
   quantity: number;
   unitPrice: number;
 }
@@ -38,6 +39,7 @@ export const useCartStore = create<CartState>()(
 
       addItem: (item) => {
         const id = crypto.randomUUID();
+        console.log("[CartStore] Item agregado:", { ...item, id });
         set((state) => ({ items: [...state.items, { ...item, id }] }));
       },
 

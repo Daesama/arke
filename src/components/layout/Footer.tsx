@@ -41,7 +41,7 @@ export function Footer() {
               height={28}
             />
             <p className="mt-4 text-sm text-text-muted">
-              Camisetas personalizadas con tu propio diseño. Subí tu imagen y nosotros la estampamos.
+              Camisetas personalizadas con tu propio diseño. Sube tu imagen y nosotros la estampamos.
             </p>
             <p className="mt-2 font-mono text-xs uppercase tracking-widest text-cyan/60">
               Tu Diseño, Tu Estilo

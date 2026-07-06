@@ -20,6 +20,7 @@ interface TshirtPreviewProps {
   onAbdominalTransformChange?: (transform: ZoneTransform) => void;
   espaldaTransform?: ZoneTransform;
   onEspaldaTransformChange?: (transform: ZoneTransform) => void;
+  captureMode?: boolean;
 }
 
 const DEFAULT_TRANSFORM: ZoneTransform = { offsetX: 0, offsetY: 0, scale: 1 };
@@ -46,6 +47,7 @@ export function TshirtPreview({
   onAbdominalTransformChange,
   espaldaTransform,
   onEspaldaTransformChange,
+  captureMode,
 }: TshirtPreviewProps) {
   const hasAnyFrontImage = zones.pechoBolsillo || zones.abdominalGrande;
   const hasBackImage = !!zones.espaldaGrande;
@@ -164,44 +166,46 @@ export function TshirtPreview({
 
   return (
     <div className="relative flex flex-col items-center">
-      <div className="mb-3 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onSideChange("front")}
-          className={cn(
-            "rounded-lg px-3 py-1.5 text-xs transition-all",
-            side === "front"
-              ? "bg-cyan/10 text-cyan border border-cyan"
-              : "border border-elevated text-text-secondary hover:border-text-muted",
-          )}
-        >
-          Frente
-        </button>
-        <button
-          type="button"
-          onClick={() => onSideChange("back")}
-          className={cn(
-            "rounded-lg px-3 py-1.5 text-xs transition-all",
-            side === "back"
-              ? "bg-cyan/10 text-cyan border border-cyan"
-              : "border border-elevated text-text-secondary hover:border-text-muted",
-          )}
-        >
-          Espalda
-        </button>
-        <button
-          type="button"
-          onClick={() => onSideChange(side === "front" ? "back" : "front")}
-          className="ml-1 rounded-lg border border-elevated p-1.5 text-text-muted transition-colors hover:border-text-muted hover:text-text-secondary"
-          aria-label="Voltear camiseta"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      {!captureMode && (
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onSideChange("front")}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-xs transition-all",
+              side === "front"
+                ? "bg-cyan/10 text-cyan border border-cyan"
+                : "border border-elevated text-text-secondary hover:border-text-muted",
+            )}
+          >
+            Frente
+          </button>
+          <button
+            type="button"
+            onClick={() => onSideChange("back")}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-xs transition-all",
+              side === "back"
+                ? "bg-cyan/10 text-cyan border border-cyan"
+                : "border border-elevated text-text-secondary hover:border-text-muted",
+            )}
+          >
+            Espalda
+          </button>
+          <button
+            type="button"
+            onClick={() => onSideChange(side === "front" ? "back" : "front")}
+            className="ml-1 rounded-lg border border-elevated p-1.5 text-text-muted transition-colors hover:border-text-muted hover:text-text-secondary"
+            aria-label="Voltear camiseta"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       <div
         ref={containerRef}
-        className="relative aspect-[3/4] w-full max-w-[320px]"
+        className={cn("relative aspect-[3/4] w-full", !captureMode && "max-w-[320px]")}
         onWheel={handleWheel}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -293,11 +297,11 @@ export function TshirtPreview({
               >
                 <img
                   src={zones.abdominalGrande}
-                  alt="Abdominal grande"
+                  alt="Pecho grande"
                   className="pointer-events-none h-auto w-full object-contain drop-shadow-lg"
                   draggable={false}
                 />
-                {onAbdominalTransformChange && (
+                {onAbdominalTransformChange && !captureMode && (
                   <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan/80 text-void shadow-md">
                     <Move className="h-3 w-3" />
                   </div>
@@ -327,7 +331,7 @@ export function TshirtPreview({
               className="pointer-events-none h-auto w-full object-contain drop-shadow-lg"
               draggable={false}
             />
-            {onEspaldaTransformChange && (
+            {onEspaldaTransformChange && !captureMode && (
               <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan/80 text-void shadow-md">
                 <Move className="h-3 w-3" />
               </div>
@@ -337,19 +341,19 @@ export function TshirtPreview({
 
         {side === "front" && !hasAnyFrontImage && (
           <div className="absolute left-1/2 top-[42%] -translate-x-1/2 text-center">
-            <p className="text-xs text-text-muted/50">Subí una imagen para el frente</p>
+            <p className="text-xs text-text-muted/50">Sube una imagen para el frente</p>
           </div>
         )}
 
         {side === "back" && !hasBackImage && (
           <div className="absolute left-1/2 top-[42%] -translate-x-1/2 text-center">
-            <p className="text-xs text-text-muted/50">Subí una imagen para la espalda</p>
+            <p className="text-xs text-text-muted/50">Sube una imagen para la espalda</p>
           </div>
         )}
       </div>
 
       {/* Scale controls */}
-      {showScaleControls && (
+      {showScaleControls && !captureMode && (
         <div className="mt-3 flex items-center gap-3 rounded-lg border border-elevated bg-surface px-3 py-2">
           <button
             type="button"

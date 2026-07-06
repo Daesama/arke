@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s | ARKE",
   },
   description:
-    "Camisetas personalizadas con tu propio diseño. Subí tu imagen, elegí tu camiseta y recibila en tu puerta.",
+    "Camisetas personalizadas con tu propio diseño. Sube tu imagen, elige tu camiseta y recíbela en tu puerta.",
   icons: {
     icon: "/brand/favicon.png",
   },

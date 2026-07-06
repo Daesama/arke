@@ -15,7 +15,7 @@ export default function PedidosPage() {
           <Package className="h-10 w-10" />
         </div>
         <h1 className="mt-4 font-heading text-xl font-medium text-text-primary">
-          No tenés pedidos aún
+          No tienes pedidos aún
         </h1>
         <p className="mt-2 text-sm text-text-secondary">
           Cuando hagas tu primera compra, tus pedidos aparecerán acá.

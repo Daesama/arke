@@ -5,7 +5,7 @@ import { Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useCartStore } from "@/stores/cartStore";
 import { TSHIRT_COLORS, TSHIRT_MATERIALS } from "@/lib/utils/constants";
-import { formatCOP, getActiveZonesFromConfig, getPriceBreakdown } from "@/lib/utils/pricing";
+import { formatCOP, getActiveZonesFromConfig, getDesglose, ENVIO } from "@/lib/utils/pricing";
 
 export default function CarritoPage() {
   const { items, removeItem, updateQuantity, totalPrice } = useCartStore();
@@ -20,7 +20,7 @@ export default function CarritoPage() {
           Tu carrito está vacío
         </h1>
         <p className="mt-2 text-sm text-text-secondary">
-          Subí tu diseño y agregalo a tu carrito.
+          Sube tu diseño y agrégalo a tu carrito.
         </p>
         <Link href="/crear" className="mt-6">
           <Button>Crear diseño</Button>
@@ -38,7 +38,7 @@ export default function CarritoPage() {
       <div className="space-y-4">
         {items.map((item) => {
           const activeZones = getActiveZonesFromConfig(item.designConfig);
-          const breakdown = getPriceBreakdown(activeZones);
+          const breakdown = getDesglose(item.material, item.genero, activeZones);
 
           return (
             <div
@@ -46,9 +46,9 @@ export default function CarritoPage() {
               className="flex gap-4 rounded-xl border border-elevated bg-surface p-4"
             >
               <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg bg-deep">
-                {item.designImageUrl && (
+                {(item.previewBase64 || item.designImageUrl) && (
                   <img
-                    src={item.designImageUrl}
+                    src={item.previewBase64 ?? item.designImageUrl}
                     alt="Diseño"
                     className="h-full w-full object-contain p-2"
                   />
@@ -70,11 +70,12 @@ export default function CarritoPage() {
                     {item.size}
                   </p>
 
-                  {/* Price breakdown */}
                   <div className="mt-2 space-y-0.5">
                     {breakdown.items.map((line) => (
                       <div key={line.label} className="flex justify-between text-[11px]">
-                        <span className="text-text-muted">{line.label}</span>
+                        <span className={line.type === "estampado" ? "text-cyan" : "text-text-muted"}>
+                          {line.label}
+                        </span>
                         <span className="font-mono text-text-muted">{formatCOP(line.price)}</span>
                       </div>
                     ))}
@@ -124,15 +125,27 @@ export default function CarritoPage() {
       </div>
 
       <div className="mt-8 rounded-xl border border-elevated bg-surface p-6">
-        <div className="flex items-center justify-between">
-          <p className="text-text-secondary">Total</p>
-          <p className="font-heading text-xl font-medium text-cyan">
-            {formatCOP(totalPrice())}
-          </p>
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-text-secondary">Subtotal</span>
+            <span className="text-text-primary">{formatCOP(totalPrice())}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-text-muted">Envío Bogotá</span>
+            <span className="font-mono text-text-muted">{formatCOP(ENVIO)}</span>
+          </div>
+          <div className="border-t border-elevated pt-2">
+            <div className="flex justify-between">
+              <span className="font-medium text-text-primary">Total</span>
+              <span className="font-heading text-xl font-medium text-text-primary">
+                {formatCOP(totalPrice() + ENVIO)}
+              </span>
+            </div>
+          </div>
         </div>
         <Link href="/checkout" className="mt-4 block">
           <Button size="lg" className="w-full">
-            Ir al checkout — {formatCOP(totalPrice())}
+            Ir al checkout — {formatCOP(totalPrice() + ENVIO)}
           </Button>
         </Link>
       </div>
