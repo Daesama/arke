@@ -131,8 +131,8 @@ export default function CarritoPage() {
             <span className="text-text-primary">{formatCOP(totalPrice())}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-text-muted">Envío Bogotá</span>
-            <span className="font-mono text-text-muted">{formatCOP(ENVIO)}</span>
+            <span className="text-[#D0D0D8]">Envío Bogotá</span>
+            <span className="font-mono text-[#D0D0D8]">{formatCOP(ENVIO)}</span>
           </div>
           <div className="border-t border-elevated pt-2">
             <div className="flex justify-between">
