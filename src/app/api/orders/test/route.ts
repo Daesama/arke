@@ -97,27 +97,61 @@ export async function POST(req: Request) {
       });
     }
 
-    // Insert order items
+    // Insert order items — design_id is NOT NULL in schema, so create a placeholder if missing
     console.log("=== INSERTANDO ORDER_ITEMS ===");
-    const orderItems = items.map((item: Record<string, unknown>) => ({
-      order_id: order.id,
-      product_id: product.id,
-      design_id: (item.designId && String(item.designId).length > 0) ? item.designId : null,
-      quantity: item.quantity ?? 1,
-      size: item.size ?? "M",
-      color: item.color ?? "#000000",
-      print_position: item.printPosition ?? "pecho",
-      unit_price: item.unitPrice ?? 0,
-      design_snapshot: {
-        prompt: item.designPrompt ?? "",
-        image_url: item.designImageUrl ?? "",
-        config: item.designConfig ?? {},
-        genero: item.genero ?? "unisex",
-        material: item.material ?? "algodon",
+    const orderItems = [];
+    for (const item of items as Record<string, unknown>[]) {
+      let designId = (item.designId && String(item.designId).length > 0)
+        ? String(item.designId)
+        : null;
+
+      if (!designId) {
+        console.log("No designId, creating placeholder design...");
+        const { data: design, error: designErr } = await supabase
+          .from("designs")
+          .insert({
+            user_id: user.id,
+            prompt: String(item.designPrompt ?? "Test order"),
+            image_url: String(item.designImageUrl ?? ""),
+            image_path: `${user.id}/test-${Date.now()}`,
+            config: item.designConfig ?? {},
+            is_catalog: false,
+            is_public: false,
+          })
+          .select("id")
+          .single();
+
+        if (designErr || !design) {
+          console.log("Error creating placeholder design:", designErr);
+          await supabase.from("orders").delete().eq("id", order.id);
+          return NextResponse.json({
+            error: `Error creando design placeholder: ${designErr?.message}`,
+          });
+        }
+        designId = design.id;
+        console.log("Placeholder design created:", designId);
+      }
+
+      orderItems.push({
+        order_id: order.id,
+        product_id: product.id,
+        design_id: designId,
+        quantity: item.quantity ?? 1,
+        size: item.size ?? "M",
         color: item.color ?? "#000000",
-        talla: item.size ?? "M",
-      },
-    }));
+        print_position: item.printPosition ?? "pecho",
+        unit_price: item.unitPrice ?? 0,
+        design_snapshot: {
+          prompt: item.designPrompt ?? "",
+          image_url: item.designImageUrl ?? "",
+          config: item.designConfig ?? {},
+          genero: item.genero ?? "unisex",
+          material: item.material ?? "algodon",
+          color: item.color ?? "#000000",
+          talla: item.size ?? "M",
+        },
+      });
+    }
     console.log("Items payload:", JSON.stringify(orderItems));
 
     const { data: itemsData, error: itemsError } = await supabase
