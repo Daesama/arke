@@ -41,17 +41,30 @@ const ZONES: { key: DesignZone; label: string; description: string; side: "front
   { key: "espaldaGrande", label: "Espalda grande", description: "Grande, centrada en la espalda (~30×35 cm)", side: "back" },
 ];
 
+type BgRemovalStatus = "idle" | "downloading" | "processing" | "done";
+
 interface ZoneState {
   file: File | null;
   preview: string | null;
+  originalFile: File | null;
+  originalPreview: string | null;
+  bgRemovalStatus: BgRemovalStatus;
 }
 
 type ZonesMap = Record<DesignZone, ZoneState>;
 
+const emptyZone: ZoneState = {
+  file: null,
+  preview: null,
+  originalFile: null,
+  originalPreview: null,
+  bgRemovalStatus: "idle",
+};
+
 const emptyZones: ZonesMap = {
-  pechoBolsillo: { file: null, preview: null },
-  abdominalGrande: { file: null, preview: null },
-  espaldaGrande: { file: null, preview: null },
+  pechoBolsillo: { ...emptyZone },
+  abdominalGrande: { ...emptyZone },
+  espaldaGrande: { ...emptyZone },
 };
 
 function fileToBase64Thumbnail(file: File, maxSize = 200): Promise<string> {
@@ -109,16 +122,81 @@ export default function CrearPage() {
 
   const handleFileSelect = useCallback((zone: DesignZone, file: File) => {
     const preview = URL.createObjectURL(file);
-    setZones((prev) => ({
-      ...prev,
-      [zone]: { file, preview },
-    }));
+    setZones((prev) => {
+      if (prev[zone].preview) URL.revokeObjectURL(prev[zone].preview!);
+      if (prev[zone].originalPreview) URL.revokeObjectURL(prev[zone].originalPreview!);
+      return {
+        ...prev,
+        [zone]: { file, preview, originalFile: null, originalPreview: null, bgRemovalStatus: "idle" as BgRemovalStatus },
+      };
+    });
   }, []);
 
   const handleRemove = useCallback((zone: DesignZone) => {
     setZones((prev) => {
       if (prev[zone].preview) URL.revokeObjectURL(prev[zone].preview!);
-      return { ...prev, [zone]: { file: null, preview: null } };
+      if (prev[zone].originalPreview) URL.revokeObjectURL(prev[zone].originalPreview!);
+      return { ...prev, [zone]: { ...emptyZone } };
+    });
+  }, []);
+
+  const handleRemoveBg = useCallback(async (zone: DesignZone) => {
+    const zoneState = zones[zone];
+    if (!zoneState.file) return;
+
+    setZones((prev) => ({
+      ...prev,
+      [zone]: { ...prev[zone], bgRemovalStatus: "downloading" as BgRemovalStatus },
+    }));
+
+    try {
+      const { removeBackground } = await import("@imgly/background-removal");
+
+      setZones((prev) => ({
+        ...prev,
+        [zone]: { ...prev[zone], bgRemovalStatus: "processing" as BgRemovalStatus },
+      }));
+
+      const blob = await removeBackground(zoneState.file);
+      const newFile = new File([blob], zoneState.file.name.replace(/\.\w+$/, ".png"), {
+        type: "image/png",
+      });
+      const newPreview = URL.createObjectURL(blob);
+
+      setZones((prev) => ({
+        ...prev,
+        [zone]: {
+          file: newFile,
+          preview: newPreview,
+          originalFile: prev[zone].originalFile ?? prev[zone].file,
+          originalPreview: prev[zone].originalPreview ?? prev[zone].preview,
+          bgRemovalStatus: "done" as BgRemovalStatus,
+        },
+      }));
+    } catch (err) {
+      console.error("Error removing background:", err);
+      setZones((prev) => ({
+        ...prev,
+        [zone]: { ...prev[zone], bgRemovalStatus: "idle" as BgRemovalStatus },
+      }));
+    }
+  }, [zones]);
+
+  const handleRestoreBg = useCallback((zone: DesignZone) => {
+    setZones((prev) => {
+      const z = prev[zone];
+      if (!z.originalFile || !z.originalPreview) return prev;
+      if (z.preview) URL.revokeObjectURL(z.preview);
+      return {
+        ...prev,
+        [zone]: {
+          file: z.originalFile,
+          preview: z.originalPreview,
+          originalFile: null,
+          originalPreview: null,
+          bgRemovalStatus: "idle" as BgRemovalStatus,
+        },
+      };
     });
   }, []);
 
@@ -395,6 +473,10 @@ export default function CrearPage() {
                   onFileSelect={(file) => handleFileSelect(zone.key, file)}
                   onRemove={() => handleRemove(zone.key)}
                   disabled={isUploading}
+                  onRemoveBg={() => handleRemoveBg(zone.key)}
+                  onRestoreBg={() => handleRestoreBg(zone.key)}
+                  bgRemovalStatus={zones[zone.key].bgRemovalStatus}
+                  hasBgRemoved={zones[zone.key].bgRemovalStatus === "done"}
                 />
               ))}
             </div>
