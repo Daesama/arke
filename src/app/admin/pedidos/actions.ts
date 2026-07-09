@@ -51,7 +51,21 @@ export async function getAllOrders() {
     return { error: "Error al obtener pedidos" };
   }
 
-  return { orders: orders as (Order & { order_items: OrderItem[] })[] };
+  const userIds = [...new Set(orders?.map((o) => o.user_id) ?? [])];
+  const emailMap: Record<string, string> = {};
+  await Promise.all(
+    userIds.map(async (uid) => {
+      const { data } = await auth.supabase.auth.admin.getUserById(uid);
+      if (data?.user?.email) emailMap[uid] = data.user.email;
+    }),
+  );
+
+  const ordersWithEmail = (orders ?? []).map((o) => ({
+    ...o,
+    user_email: emailMap[o.user_id] ?? null,
+  }));
+
+  return { orders: ordersWithEmail as (Order & { order_items: OrderItem[]; user_email: string | null })[] };
 }
 
 export async function updateOrderStatus(

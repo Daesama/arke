@@ -20,6 +20,7 @@ import type { Order, OrderItem, OrderStatus } from "@/types/database";
 
 interface OrderWithItems extends Order {
   order_items: OrderItem[];
+  user_email: string | null;
 }
 
 const MATERIAL_LABELS: Record<string, string> = {
@@ -145,6 +146,7 @@ function buildSummaryText(order: OrderWithItems, item: OrderItem): string {
     "",
     "DATOS DEL CLIENTE",
     `Nombre: ${order.shipping_name}`,
+    ...(order.user_email ? [`Email: ${order.user_email}`] : []),
     `WhatsApp: ${order.shipping_phone}`,
     `Direccion: ${order.shipping_address}`,
     `Localidad: ${order.shipping_city}, ${order.shipping_department}`,
@@ -398,6 +400,9 @@ function OrderDetail({
             <p className="font-medium text-text-primary">
               {order.shipping_name}
             </p>
+            {order.user_email && (
+              <p>Email: {order.user_email}</p>
+            )}
             <p>WhatsApp: {order.shipping_phone}</p>
             <p>{order.shipping_address}</p>
             <p>
