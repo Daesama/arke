@@ -126,9 +126,7 @@ export function OrderCard({ order }: OrderCardProps) {
           <div className="min-w-0">
             <p className="text-text-secondary">Método de pago</p>
             <p className="text-text-primary">
-              {order.payment_method === "cash_on_delivery"
-                ? "Contra entrega"
-                : order.payment_method.replace("wompi_", "").toUpperCase()}
+              {order.payment_method.replace("wompi_", "").toUpperCase()}
             </p>
           </div>
         </div>

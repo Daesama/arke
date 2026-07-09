@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       shipping_city: shipping.localidad,
       shipping_department: "Bogotá D.C.",
       shipping_notes: shipping.notes || null,
-      payment_method: "cash_on_delivery" as const,
+      payment_method: "wompi_card" as const,
       payment_status: "approved",
       subtotal,
       shipping_cost: ENVIO,
