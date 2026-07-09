@@ -53,8 +53,8 @@ const config: Config = {
         surface: "#1C1C28",
         elevated: "#2A2A3A",
         "text-primary": "#EEEEF0",
-        "text-secondary": "#9999A8",
-        "text-muted": "#5A5A6E",
+        "text-secondary": "#B0B0BE",
+        "text-muted": "#7A7A8E",
       },
       fontFamily: {
         heading: ["var(--font-space-grotesk)", "sans-serif"],
