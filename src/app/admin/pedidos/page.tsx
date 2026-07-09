@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ORDER_STATUSES } from "@/lib/utils/constants";
-import { getAllOrders, updateOrderStatus } from "./actions";
+import { getAllOrders } from "./actions";
 import {
   Download,
   ChevronDown,
@@ -534,13 +534,24 @@ export default function AdminPedidosPage() {
 
   const handleStatusChange = useCallback(
     async (orderId: string, newStatus: OrderStatus) => {
-      const result = await updateOrderStatus(orderId, newStatus);
-      if (result.success) {
+      try {
+        const res = await fetch("/api/orders/update-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId, status: newStatus }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || "Error al actualizar estado");
+          return;
+        }
         setOrders((prev) =>
           prev.map((o) =>
             o.id === orderId ? { ...o, status: newStatus } : o,
           ),
         );
+      } catch {
+        alert("Error de conexión al actualizar estado");
       }
     },
     [],
