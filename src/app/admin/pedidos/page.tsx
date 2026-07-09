@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { createClient } from "@/lib/supabase/client";
 import { ORDER_STATUSES } from "@/lib/utils/constants";
+import { getAllOrders } from "./actions";
 import {
   Download,
   ChevronDown,
@@ -394,13 +394,10 @@ export default function AdminPedidosPage() {
 
   useEffect(() => {
     async function fetchOrders() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("orders")
-        .select("*, order_items(*)")
-        .order("created_at", { ascending: false });
-
-      if (data) setOrders(data as OrderWithItems[]);
+      const result = await getAllOrders();
+      if (result.orders) {
+        setOrders(result.orders);
+      }
       setLoading(false);
     }
     fetchOrders();
