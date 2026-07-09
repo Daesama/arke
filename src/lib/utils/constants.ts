@@ -14,19 +14,12 @@ export const TSHIRT_COLORS = [
   { name: "Negro", value: "#1a1a1a", slug: "negro" },
   { name: "Blanco", value: "#f5f5f5", slug: "blanco" },
   { name: "Gris", value: "#6B7280", slug: "gris" },
-  { name: "Navy", value: "#1E3A5F", slug: "navy" },
   { name: "Rojo", value: "#DC2626", slug: "rojo" },
-  { name: "Borgoña", value: "#7F1D1D", slug: "borgona" },
-  { name: "Verde", value: "#16A34A", slug: "verde" },
-  { name: "Oliva", value: "#4D7C0F", slug: "oliva" },
   { name: "Azul", value: "#2563EB", slug: "azul" },
-  { name: "Celeste", value: "#38BDF8", slug: "celeste" },
-  { name: "Morado", value: "#7C3AED", slug: "morado" },
-  { name: "Rosa", value: "#EC4899", slug: "rosa" },
-  { name: "Naranja", value: "#EA580C", slug: "naranja" },
   { name: "Amarillo", value: "#EAB308", slug: "amarillo" },
-  { name: "Beige", value: "#D4C5A9", slug: "beige" },
-  { name: "Arena", value: "#C2B280", slug: "arena" },
+  { name: "Verde", value: "#16A34A", slug: "verde" },
+  { name: "Naranja", value: "#EA580C", slug: "naranja" },
+  { name: "Morado", value: "#7C3AED", slug: "morado" },
 ] as const;
 
 export const TSHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;

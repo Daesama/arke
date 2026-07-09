@@ -27,7 +27,12 @@ const PRESET_COLORS: ColorOption[] = [
   { name: "Negro", value: "#1a1a1a", slug: "negro" },
   { name: "Blanco", value: "#f5f5f5", slug: "blanco" },
   { name: "Gris", value: "#6B7280", slug: "gris" },
-  { name: "Navy", value: "#1E3A5F", slug: "navy" },
+  { name: "Rojo", value: "#DC2626", slug: "rojo" },
+  { name: "Azul", value: "#2563EB", slug: "azul" },
+  { name: "Amarillo", value: "#EAB308", slug: "amarillo" },
+  { name: "Verde", value: "#16A34A", slug: "verde" },
+  { name: "Naranja", value: "#EA580C", slug: "naranja" },
+  { name: "Morado", value: "#7C3AED", slug: "morado" },
 ];
 
 const ZONES: { key: DesignZone; label: string; description: string; side: "front" | "back" }[] = [

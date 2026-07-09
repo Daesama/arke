@@ -125,7 +125,7 @@ export async function POST(req: Request) {
         design_id: designId,
         quantity: item.quantity ?? 1,
         size: item.size ?? "M",
-        color: item.color ?? "#000000",
+        color: item.color ?? "negro",
         print_position: item.printPosition ?? "pecho",
         unit_price: item.unitPrice ?? 0,
         design_snapshot: {
@@ -134,7 +134,7 @@ export async function POST(req: Request) {
           config: item.designConfig ?? {},
           genero: item.genero ?? "unisex",
           material: item.material ?? "algodon",
-          color: item.color ?? "#000000",
+          color: item.color ?? "negro",
           talla: item.size ?? "M",
         },
       });

@@ -1,10 +1,10 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import type { Order, OrderItem } from "@/types/database";
 
 export async function getAllOrders() {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data: orders, error } = await supabase
     .from("orders")

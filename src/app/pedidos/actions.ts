@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import type { Order, OrderItem } from "@/types/database";
 
 export async function getUserOrders() {
@@ -14,11 +13,8 @@ export async function getUserOrders() {
     return { error: "No autenticado" };
   }
 
-  // Use admin client to bypass RLS issues
-  const supabaseAdmin = createAdminClient();
-
   // First get orders with order_items
-  const { data: orders, error } = await supabaseAdmin
+  const { data: orders, error } = await supabase
     .from("orders")
     .select(`
       *,
@@ -40,7 +36,7 @@ export async function getUserOrders() {
   // Fetch designs separately
   let designsMap: Record<string, any> = {};
   if (designIds && designIds.length > 0) {
-    const { data: designs } = await supabaseAdmin
+    const { data: designs } = await supabase
       .from("designs")
       .select("id, image_url, thumbnail_url")
       .in("id", designIds);
