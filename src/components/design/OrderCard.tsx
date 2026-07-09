@@ -1,8 +1,8 @@
 "use client";
 
-import { Package, Calendar, MapPin, CreditCard } from "lucide-react";
+import { Package, Calendar, MapPin, CreditCard, Check } from "lucide-react";
 import { TSHIRT_COLORS } from "@/lib/utils/constants";
-import type { Order, OrderItem } from "@/types/database";
+import type { Order, OrderItem, OrderStatus } from "@/types/database";
 import type { DesignZoneConfig } from "@/types/design";
 import { cn } from "@/lib/utils/cn";
 import { formatCOP } from "@/lib/utils/pricing";
@@ -25,6 +25,89 @@ const statusConfig = {
   cancelled: { label: "Cancelado", color: "text-red-400", bg: "bg-red-400/10", border: "border-red-400/30" },
   refunded: { label: "Reembolsado", color: "text-text-muted", bg: "bg-text-muted/10", border: "border-text-muted/30" },
 };
+
+const PROGRESS_STEPS: { key: OrderStatus; label: string; tsKey: keyof Order }[] = [
+  { key: "paid", label: "Pagado", tsKey: "paid_at" },
+  { key: "in_production", label: "En producción", tsKey: "production_at" },
+  { key: "shipped", label: "Enviado", tsKey: "shipped_at" },
+  { key: "delivered", label: "Entregado", tsKey: "delivered_at" },
+];
+
+function OrderProgressBar({ order }: { order: Order }) {
+  const currentIdx = PROGRESS_STEPS.findIndex((s) => s.key === order.status);
+  if (currentIdx < 0) return null;
+
+  return (
+    <div className="flex items-start justify-between gap-0">
+      {PROGRESS_STEPS.map((step, idx) => {
+        const isPast = idx < currentIdx;
+        const isCurrent = idx === currentIdx;
+        const isFuture = idx > currentIdx;
+        const ts = order[step.tsKey] as string | null;
+
+        return (
+          <div key={step.key} className="flex flex-1 flex-col items-center">
+            <div className="flex w-full items-center">
+              {idx > 0 && (
+                <div
+                  className={cn(
+                    "h-0.5 flex-1",
+                    isPast || isCurrent ? "bg-green-400/50" : "bg-elevated",
+                  )}
+                />
+              )}
+              <div
+                className={cn(
+                  "flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 text-[10px]",
+                  isPast && "border-green-400 bg-green-400/20 text-green-400",
+                  isCurrent && "border-cyan bg-cyan/20 text-cyan",
+                  isFuture && "border-elevated bg-deep text-text-muted",
+                )}
+              >
+                {isPast ? (
+                  <Check className="h-3 w-3" />
+                ) : isCurrent ? (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan opacity-50" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan" />
+                  </span>
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full bg-text-muted/40" />
+                )}
+              </div>
+              {idx < PROGRESS_STEPS.length - 1 && (
+                <div
+                  className={cn(
+                    "h-0.5 flex-1",
+                    isPast ? "bg-green-400/50" : "bg-elevated",
+                  )}
+                />
+              )}
+            </div>
+            <span
+              className={cn(
+                "mt-1.5 text-center text-[10px] font-medium leading-tight",
+                isPast && "text-green-400",
+                isCurrent && "text-cyan",
+                isFuture && "text-text-muted",
+              )}
+            >
+              {step.label}
+            </span>
+            {ts && (
+              <span className="text-[9px] text-text-muted">
+                {new Date(ts).toLocaleDateString("es-CO", {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function OrderCard({ order }: OrderCardProps) {
   const status = statusConfig[order.status] || statusConfig.pending;
@@ -119,6 +202,13 @@ export function OrderCard({ order }: OrderCardProps) {
           </div>
         ))}
       </div>
+
+      {/* Progress Bar */}
+      {PROGRESS_STEPS.some((s) => s.key === order.status) && (
+        <div className="mt-6 rounded-lg border border-elevated bg-deep p-4">
+          <OrderProgressBar order={order} />
+        </div>
+      )}
 
       {/* Shipping Info */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">

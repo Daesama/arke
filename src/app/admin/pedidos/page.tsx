@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ORDER_STATUSES } from "@/lib/utils/constants";
-import { getAllOrders } from "./actions";
+import { getAllOrders, updateOrderStatus } from "./actions";
 import {
   Download,
   ChevronDown,
@@ -13,6 +13,7 @@ import {
   Check,
   Image,
   Scissors,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { Order, OrderItem, OrderStatus } from "@/types/database";
@@ -206,6 +207,106 @@ function CopyButton({ text }: { text: string }) {
       )}
       {copied ? "Copiado" : "Copiar resumen"}
     </button>
+  );
+}
+
+const STATUS_FLOW: { key: OrderStatus; label: string }[] = [
+  { key: "paid", label: "Pagado" },
+  { key: "in_production", label: "En producción" },
+  { key: "shipped", label: "Enviado" },
+  { key: "delivered", label: "Entregado" },
+];
+
+function OrderStatusSelector({
+  order,
+  onStatusChange,
+}: {
+  order: OrderWithItems;
+  onStatusChange: (orderId: string, newStatus: OrderStatus) => Promise<void>;
+}) {
+  const [updating, setUpdating] = useState(false);
+
+  const currentIdx = STATUS_FLOW.findIndex((s) => s.key === order.status);
+
+  async function handleClick(idx: number) {
+    if (updating) return;
+    const target = STATUS_FLOW[idx];
+    if (!target || target.key === order.status) return;
+    if (idx !== currentIdx - 1 && idx !== currentIdx + 1) return;
+
+    setUpdating(true);
+    try {
+      await onStatusChange(order.id, target.key);
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-elevated bg-surface p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-heading text-sm font-medium text-cyan">
+          Estado del pedido
+        </h3>
+        {updating && (
+          <Loader2 className="h-4 w-4 animate-spin text-cyan" />
+        )}
+      </div>
+      <div className="flex items-center gap-1">
+        {STATUS_FLOW.map((step, idx) => {
+          const isCurrent = step.key === order.status;
+          const isPast = currentIdx >= 0 && idx < currentIdx;
+          const isClickable =
+            !updating && (idx === currentIdx - 1 || idx === currentIdx + 1);
+
+          return (
+            <div key={step.key} className="flex items-center">
+              {idx > 0 && (
+                <div
+                  className={cn(
+                    "mx-1 h-0.5 w-4 sm:w-6",
+                    isPast || isCurrent ? "bg-green-400/50" : "bg-elevated",
+                  )}
+                />
+              )}
+              <button
+                type="button"
+                disabled={!isClickable}
+                onClick={() => handleClick(idx)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all",
+                  isCurrent &&
+                    "border-cyan bg-cyan/10 text-cyan shadow-[0_0_8px_rgba(0,240,255,0.15)]",
+                  isPast &&
+                    "border-green-400/30 bg-green-400/10 text-green-400",
+                  !isCurrent &&
+                    !isPast &&
+                    "border-elevated bg-deep text-text-muted",
+                  isClickable &&
+                    !isCurrent &&
+                    "cursor-pointer hover:border-cyan/50 hover:text-text-secondary",
+                  !isClickable && "cursor-default",
+                )}
+              >
+                {isPast && <Check className="h-3 w-3" />}
+                {isCurrent && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan opacity-50" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan" />
+                  </span>
+                )}
+                {step.label}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      {currentIdx < 0 && (
+        <p className="mt-2 text-xs text-text-muted">
+          Estado actual: {ORDER_STATUSES[order.status]?.label ?? order.status}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -431,6 +532,20 @@ export default function AdminPedidosPage() {
     fetchOrders();
   }, []);
 
+  const handleStatusChange = useCallback(
+    async (orderId: string, newStatus: OrderStatus) => {
+      const result = await updateOrderStatus(orderId, newStatus);
+      if (result.success) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId ? { ...o, status: newStatus } : o,
+          ),
+        );
+      }
+    },
+    [],
+  );
+
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-8 flex items-center justify-between">
@@ -546,6 +661,10 @@ export default function AdminPedidosPage() {
                         {isExpanded && (
                           <div className="border-b border-elevated bg-deep/50 px-4 py-4">
                             <div className="space-y-4">
+                              <OrderStatusSelector
+                                order={order}
+                                onStatusChange={handleStatusChange}
+                              />
                               {order.order_items.map((item) => (
                                 <OrderDetail
                                   key={item.id}

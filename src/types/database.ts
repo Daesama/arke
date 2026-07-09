@@ -103,6 +103,7 @@ export interface Order {
   discount: number;
   total: number;
   paid_at: string | null;
+  production_at: string | null;
   shipped_at: string | null;
   delivered_at: string | null;
   created_at: string;
