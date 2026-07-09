@@ -1,19 +1,21 @@
 "use server";
 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Order, OrderItem } from "@/types/database";
 
 export async function getUserOrders() {
-  const supabase = await createClient();
+  const supabaseAuth = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabaseAuth.auth.getUser();
 
   if (!user) {
     return { error: "No autenticado" };
   }
 
-  // First get orders with order_items
+  const supabase = createAdminClient();
+
   const { data: orders, error } = await supabase
     .from("orders")
     .select(`
@@ -28,12 +30,10 @@ export async function getUserOrders() {
     return { error: "Error al obtener pedidos" };
   }
 
-  // Get design IDs from all order items
   const designIds = orders?.flatMap((order) =>
     order.order_items.map((item: any) => item.design_id)
   ).filter(Boolean);
 
-  // Fetch designs separately
   let designsMap: Record<string, any> = {};
   if (designIds && designIds.length > 0) {
     const { data: designs } = await supabase
@@ -49,7 +49,6 @@ export async function getUserOrders() {
     }
   }
 
-  // Attach designs to order items
   const ordersWithDesigns = orders?.map((order: any) => ({
     ...order,
     order_items: order.order_items.map((item: any) => ({
