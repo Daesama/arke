@@ -7,6 +7,7 @@ export const NAV_LINKS = [
   { label: "Inicio", href: "/" },
   { label: "Crear", href: "/crear" },
   { label: "Catálogo", href: "/catalogo" },
+  { label: "Mis pedidos", href: "/pedidos" },
 ] as const;
 
 export const TSHIRT_COLORS = [
