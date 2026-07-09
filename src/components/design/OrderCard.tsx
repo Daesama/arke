@@ -1,10 +1,12 @@
 "use client";
 
 import { Package, Calendar, MapPin, CreditCard } from "lucide-react";
-import { ORDER_STATUSES } from "@/lib/utils/constants";
+import { TSHIRT_COLORS } from "@/lib/utils/constants";
 import type { Order, OrderItem } from "@/types/database";
+import type { DesignZoneConfig } from "@/types/design";
 import { cn } from "@/lib/utils/cn";
 import { formatCOP } from "@/lib/utils/pricing";
+import { TshirtPreviewThumbnail } from "./TshirtPreviewThumbnail";
 
 interface OrderCardProps {
   order: Order & {
@@ -70,26 +72,36 @@ export function OrderCard({ order }: OrderCardProps) {
             key={item.id}
             className="flex items-center gap-4 rounded-lg bg-deep p-3 transition-colors hover:bg-elevated"
           >
-            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-surface">
-              {item.design?.thumbnail_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.design.thumbnail_url}
-                  alt="Diseño"
-                  className="h-full w-full object-cover"
-                />
-              ) : item.design?.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.design.image_url}
-                  alt="Diseño"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  <Package className="h-6 w-6 text-text-muted" />
-                </div>
-              )}
+            <div className="flex-shrink-0">
+              {(() => {
+                const config = (item.design_snapshot?.config ?? null) as DesignZoneConfig | null;
+                const colorHex =
+                  TSHIRT_COLORS.find((c) => c.slug === item.color)?.value ?? "#1a1a1a";
+                if (config && (config.pechoBolsillo?.enabled || config.abdominalGrande?.enabled || config.espaldaGrande?.enabled)) {
+                  return (
+                    <TshirtPreviewThumbnail
+                      zoneConfig={config}
+                      colorHex={colorHex}
+                      className="relative aspect-[3/4] h-[100px]"
+                    />
+                  );
+                }
+                return (
+                  <div className="relative h-16 w-16 overflow-hidden rounded-lg bg-surface">
+                    {item.design?.thumbnail_url || item.design?.image_url ? (
+                      <img
+                        src={item.design.thumbnail_url ?? item.design.image_url}
+                        alt="Diseño"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Package className="h-6 w-6 text-text-muted" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="flex-1 min-w-0">
