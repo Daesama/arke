@@ -7,6 +7,7 @@ interface TshirtPreviewThumbnailProps {
   zoneConfig: DesignZoneConfig;
   colorHex: string;
   className?: string;
+  forceSide?: "front" | "back";
 }
 
 function adjustColor(hex: string, amount: number): string {
@@ -44,6 +45,7 @@ export function TshirtPreviewThumbnail({
   zoneConfig,
   colorHex,
   className,
+  forceSide,
 }: TshirtPreviewThumbnailProps) {
   const id = useId();
   const gradId = `tshirtGrad-${id}`;
@@ -53,7 +55,7 @@ export function TshirtPreviewThumbnail({
   const espalda = zoneConfig.espaldaGrande?.enabled ? zoneConfig.espaldaGrande : null;
 
   const hasFront = !!(pecho || abdominal);
-  const side = hasFront ? "front" : espalda ? "back" : "front";
+  const side = forceSide ?? (hasFront ? "front" : espalda ? "back" : "front");
 
   const shadow = adjustColor(colorHex, -30);
   const highlight = adjustColor(colorHex, 12);

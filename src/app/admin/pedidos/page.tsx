@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { Order, OrderItem, OrderStatus } from "@/types/database";
+import type { DesignZoneConfig } from "@/types/design";
+import { TshirtPreviewThumbnail } from "@/components/design/TshirtPreviewThumbnail";
+import { Shirt } from "lucide-react";
 
 interface OrderWithItems extends Order {
   order_items: OrderItem[];
@@ -471,6 +474,58 @@ function OrderDetail({
             </div>
           </div>
         )}
+
+      {/* ─── Preview de la camiseta ─── */}
+      {snap.zones && (() => {
+        const config = snap.zones as unknown as DesignZoneConfig;
+        const colorHex = COLOR_HEX[snap.color?.toLowerCase() ?? ""] ?? "#1a1a1a";
+        const frontOnly: DesignZoneConfig = {
+          pechoBolsillo: config.pechoBolsillo,
+          abdominalGrande: config.abdominalGrande,
+        };
+        const backOnly: DesignZoneConfig = {
+          espaldaGrande: config.espaldaGrande,
+        };
+        const hasFront = !!(config.pechoBolsillo?.enabled || config.abdominalGrande?.enabled);
+        const hasBack = !!config.espaldaGrande?.enabled;
+
+        return (
+          <div className="rounded-lg border border-elevated bg-surface p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Shirt className="h-4 w-4 text-cyan" />
+              <h3 className="font-heading text-sm font-medium text-cyan">
+                Preview de la camiseta
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-6">
+              <div className="flex flex-col items-center gap-2">
+                <TshirtPreviewThumbnail
+                  zoneConfig={hasFront ? frontOnly : { pechoBolsillo: undefined, abdominalGrande: undefined }}
+                  colorHex={colorHex}
+                  forceSide="front"
+                  className="relative aspect-[3/4] h-[200px]"
+                />
+                <span className="text-[10px] font-medium text-text-muted">Frente</span>
+                {!hasFront && (
+                  <span className="text-[10px] text-text-muted/60">Sin diseño</span>
+                )}
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <TshirtPreviewThumbnail
+                  zoneConfig={hasBack ? backOnly : { espaldaGrande: undefined }}
+                  colorHex={colorHex}
+                  forceSide="back"
+                  className="relative aspect-[3/4] h-[200px]"
+                />
+                <span className="text-[10px] font-medium text-text-muted">Espalda</span>
+                {!hasBack && (
+                  <span className="text-[10px] text-text-muted/60">Sin diseño</span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ─── Imágenes originales para estampar ─── */}
       {snap.zones && (
