@@ -11,8 +11,7 @@ export type PaymentMethod =
   | "wompi_card"
   | "wompi_pse"
   | "wompi_nequi"
-  | "wompi_daviplata"
-  | "cash_on_delivery";
+  | "wompi_daviplata";
 
 export type PaymentStatus =
   | "pending"

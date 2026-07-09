@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { createClient } from "@/lib/supabase/client";
 import { ORDER_STATUSES } from "@/lib/utils/constants";
+import { getAllOrders } from "./actions";
 import {
   Download,
   ChevronDown,
@@ -56,11 +56,43 @@ const COLOR_NAMES: Record<string, string> = {
   "#f0f0f0": "Blanco",
   "#6b7280": "Gris",
   "#808080": "Gris",
-  "#1e3a5f": "Navy",
+  "#6B7280": "Gris",
+  "#1e3a5f": "Azul",
+  "#DC2626": "Rojo",
+  "#2563EB": "Azul",
+  "#EAB308": "Amarillo",
+  "#16A34A": "Verde",
+  "#EA580C": "Naranja",
+  "#7C3AED": "Morado",
+  "#7F1D1D": "Rojo",
+  "#4D7C0F": "Verde",
+  "#38BDF8": "Azul",
+  "#EC4899": "Morado",
+  "#D4C5A9": "Gris",
+  "#C2B280": "Gris",
+  "#FFD700": "Amarillo",
+  "#000000": "Negro",
   negro: "Negro",
   blanco: "Blanco",
   gris: "Gris",
-  navy: "Navy",
+  rojo: "Rojo",
+  azul: "Azul",
+  amarillo: "Amarillo",
+  verde: "Verde",
+  naranja: "Naranja",
+  morado: "Morado",
+};
+
+const COLOR_HEX: Record<string, string> = {
+  negro: "#1a1a1a",
+  blanco: "#f5f5f5",
+  gris: "#6B7280",
+  rojo: "#DC2626",
+  azul: "#2563EB",
+  amarillo: "#EAB308",
+  verde: "#16A34A",
+  naranja: "#EA580C",
+  morado: "#7C3AED",
 };
 
 interface OrganizedData {
@@ -98,7 +130,6 @@ function getActiveZones(
 function buildSummaryText(order: OrderWithItems, item: OrderItem): string {
   const snap = getSnapshot(item);
   const colorName = COLOR_NAMES[snap.color?.toLowerCase() ?? ""] ?? snap.color;
-  const colorHex = snap.color?.startsWith("#") ? ` (${snap.color})` : "";
   const activeZones = getActiveZones(snap.zones);
 
   const lines = [
@@ -106,7 +137,7 @@ function buildSummaryText(order: OrderWithItems, item: OrderItem): string {
     "",
     `Genero: ${snap.genero ? (GENERO_LABELS[snap.genero] ?? snap.genero) : "-"}`,
     `Material: ${snap.material ? (MATERIAL_LABELS[snap.material] ?? snap.material) : "-"}`,
-    `Color: ${colorName}${colorHex}`,
+    `Color: ${colorName}`,
     `Talla: ${snap.talla ?? "-"}`,
     `Cantidad: ${item.quantity}`,
     `Zonas: ${activeZones.length > 0 ? activeZones.join(", ") : "Ninguna"}`,
@@ -187,10 +218,7 @@ function OrderDetail({
 }) {
   const snap = getSnapshot(item);
   const activeZones = getActiveZones(snap.zones);
-  const colorHex = snap.color?.startsWith("#") ? snap.color : null;
-  const colorName =
-    COLOR_NAMES[snap.color?.toLowerCase() ?? ""] ??
-    (colorHex ? colorHex : snap.color);
+  const colorName = COLOR_NAMES[snap.color?.toLowerCase() ?? ""] ?? snap.color;
 
   const summaryText = buildSummaryText(order, item);
 
@@ -228,7 +256,7 @@ function OrderDetail({
               <span
                 className="inline-block h-4 w-4 rounded-full border border-elevated"
                 style={{
-                  backgroundColor: colorHex ?? `var(--color-${snap.color}, #888)`,
+                  backgroundColor: COLOR_HEX[snap.color?.toLowerCase() ?? ""] ?? "#888",
                 }}
               />
               <span className="font-medium text-text-primary">
@@ -394,13 +422,10 @@ export default function AdminPedidosPage() {
 
   useEffect(() => {
     async function fetchOrders() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("orders")
-        .select("*, order_items(*)")
-        .order("created_at", { ascending: false });
-
-      if (data) setOrders(data as OrderWithItems[]);
+      const result = await getAllOrders();
+      if (result.orders) {
+        setOrders(result.orders);
+      }
       setLoading(false);
     }
     fetchOrders();
