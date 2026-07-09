@@ -11,10 +11,7 @@ export async function POST(req: Request) {
 
   const updateData: Record<string, unknown> = { status };
 
-  if (status === "in_production")
-    updateData.production_at = new Date().toISOString();
-  if (status === "shipped")
-    updateData.shipped_at = new Date().toISOString();
+  if (status === "shipped") updateData.shipped_at = new Date().toISOString();
   if (status === "delivered")
     updateData.delivered_at = new Date().toISOString();
 
@@ -25,5 +22,14 @@ export async function POST(req: Request) {
 
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (status === "in_production") {
+    await supabase
+      .from("orders")
+      .update({ production_at: new Date().toISOString() })
+      .eq("id", orderId)
+      .then(() => {});
+  }
+
   return NextResponse.json({ success: true });
 }
