@@ -575,14 +575,14 @@ export default function AdminPedidosPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-elevated text-text-muted">
-                <th className="pb-3 font-medium">Numero</th>
-                <th className="pb-3 font-medium">Cliente</th>
-                <th className="pb-3 font-medium">Estado</th>
-                <th className="pb-3 font-medium">Pago</th>
-                <th className="pb-3 font-medium">Total</th>
-                <th className="pb-3 font-medium">Referencia</th>
-                <th className="pb-3 font-medium">Fecha</th>
-                <th className="pb-3 font-medium" />
+                <th style={{ width: "8%" }} className="px-4 pb-3 font-medium">Numero</th>
+                <th style={{ width: "18%" }} className="px-4 pb-3 font-medium">Cliente</th>
+                <th style={{ width: "14%" }} className="px-4 pb-3 font-medium">Estado</th>
+                <th style={{ width: "12%" }} className="px-4 pb-3 font-medium">Pago</th>
+                <th style={{ width: "12%" }} className="px-4 pb-3 font-medium">Total</th>
+                <th style={{ width: "18%" }} className="px-4 pb-3 font-medium">Referencia</th>
+                <th style={{ width: "14%" }} className="px-4 pb-3 font-medium">Fecha</th>
+                <th style={{ width: "4%" }} className="px-4 pb-3 font-medium" />
               </tr>
             </thead>
             <tbody>
@@ -615,59 +615,73 @@ export default function AdminPedidosPage() {
                   return (
                     <tr key={order.id} className="group">
                       <td colSpan={8} className="p-0">
-                        <div
-                          className="flex cursor-pointer items-center border-b border-elevated px-4 py-3 transition-colors hover:bg-deep"
-                          onClick={() =>
-                            setExpandedOrder(
-                              isExpanded ? null : order.id,
-                            )
-                          }
-                        >
-                          <span className="w-24 font-mono text-text-primary">
-                            #{order.order_number}
-                          </span>
-                          <span className="w-40 text-text-secondary">
-                            {order.shipping_name}
-                          </span>
-                          <span className="w-28">
-                            <Badge
-                              variant="muted"
-                              className={status?.color}
+                        <table className="w-full table-fixed text-left text-sm">
+                          <colgroup>
+                            <col style={{ width: "8%" }} />
+                            <col style={{ width: "18%" }} />
+                            <col style={{ width: "14%" }} />
+                            <col style={{ width: "12%" }} />
+                            <col style={{ width: "12%" }} />
+                            <col style={{ width: "18%" }} />
+                            <col style={{ width: "14%" }} />
+                            <col style={{ width: "4%" }} />
+                          </colgroup>
+                          <tbody>
+                            <tr
+                              className="cursor-pointer border-b border-elevated transition-colors hover:bg-deep"
+                              onClick={() =>
+                                setExpandedOrder(
+                                  isExpanded ? null : order.id,
+                                )
+                              }
                             >
-                              {status?.label ?? order.status}
-                            </Badge>
-                          </span>
-                          <span className="w-28">
-                            <Badge
-                              variant="muted"
-                              className={paymentInfo?.color}
-                            >
-                              {paymentInfo?.label ??
-                                order.payment_status}
-                            </Badge>
-                          </span>
-                          <span className="w-28 font-mono text-text-primary">
-                            ${order.total.toLocaleString("es-CO")}
-                          </span>
-                          <span
-                            className="w-36 truncate font-mono text-xs text-text-muted"
-                            title={
-                              order.payment_reference ?? ""
-                            }
-                          >
-                            {order.payment_reference ?? "—"}
-                          </span>
-                          <span className="flex-1 text-text-muted">
-                            {new Date(
-                              order.created_at,
-                            ).toLocaleDateString("es-CO")}
-                          </span>
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4 text-text-muted" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-text-muted" />
-                          )}
-                        </div>
+                              <td className="px-4 py-3 font-mono text-text-primary">
+                                #{order.order_number}
+                              </td>
+                              <td className="truncate px-4 py-3 text-text-secondary">
+                                {order.shipping_name}
+                              </td>
+                              <td className="px-4 py-3">
+                                <Badge
+                                  variant="muted"
+                                  className={status?.color}
+                                >
+                                  {status?.label ?? order.status}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3">
+                                <Badge
+                                  variant="muted"
+                                  className={paymentInfo?.color}
+                                >
+                                  {paymentInfo?.label ??
+                                    order.payment_status}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3 font-mono text-text-primary">
+                                ${order.total.toLocaleString("es-CO")}
+                              </td>
+                              <td
+                                className="truncate px-4 py-3 font-mono text-xs text-text-muted"
+                                title={order.payment_reference ?? ""}
+                              >
+                                {order.payment_reference ?? "—"}
+                              </td>
+                              <td className="px-4 py-3 text-text-muted">
+                                {new Date(
+                                  order.created_at,
+                                ).toLocaleDateString("es-CO")}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                {isExpanded ? (
+                                  <ChevronUp className="inline h-4 w-4 text-text-muted" />
+                                ) : (
+                                  <ChevronDown className="inline h-4 w-4 text-text-muted" />
+                                )}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
 
                         {isExpanded && (
                           <div className="border-b border-elevated bg-deep/50 px-4 py-4">
