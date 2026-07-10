@@ -13,7 +13,7 @@ export default function CarritoPage() {
   if (items.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-        <div className="rounded-2xl bg-surface/80 p-5 text-text-muted">
+        <div className="rounded-2xl bg-surface/40 p-5 text-text-muted backdrop-blur-xl">
           <ShoppingCart className="h-10 w-10" />
         </div>
         <h1 className="mt-5 font-heading text-xl font-medium text-text-primary">
@@ -44,7 +44,7 @@ export default function CarritoPage() {
           return (
             <div
               key={item.id}
-              className="flex gap-4 rounded-2xl border border-elevated/70 bg-surface/80 p-4 transition-all duration-200 hover:border-elevated"
+              className="gradient-border gradient-border-subtle flex gap-4 rounded-2xl bg-surface/30 p-4 backdrop-blur-xl transition-all duration-300 hover:scale-[1.01] hover:bg-surface/40"
             >
               <div className="h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-deep">
                 {(item.previewBase64 || item.designImageUrl) && (
@@ -89,7 +89,7 @@ export default function CarritoPage() {
                       type="button"
                       onClick={() => updateQuantity(item.id, item.quantity - 1)}
                       disabled={item.quantity <= 1}
-                      className="rounded-lg border border-elevated/70 p-1.5 text-text-secondary transition-all duration-200 hover:border-elevated hover:bg-surface disabled:opacity-30"
+                      className="rounded-md border border-white/[0.06] p-1.5 text-text-secondary transition-all duration-300 hover:border-cyan/20 hover:bg-surface/30 disabled:opacity-30"
                     >
                       <Minus className="h-3 w-3" />
                     </button>
@@ -125,7 +125,7 @@ export default function CarritoPage() {
         })}
       </div>
 
-      <div className="mt-8 rounded-2xl border border-elevated/70 bg-surface/80 p-6">
+      <div className="gradient-border mt-8 rounded-2xl bg-surface/30 p-6 backdrop-blur-xl">
         <div className="space-y-2.5">
           <div className="flex justify-between text-sm">
             <span className="text-text-secondary">Subtotal</span>

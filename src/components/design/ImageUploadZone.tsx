@@ -42,7 +42,7 @@ export function ImageUploadZone({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-2.5 rounded-xl border border-elevated/70 bg-deep/80 px-3 py-2.5 transition-colors duration-200 hover:border-elevated">
+      <div className="flex items-center gap-2.5 rounded-lg border border-white/[0.06] bg-deep/50 px-3 py-2.5 backdrop-blur-sm transition-all duration-300 hover:border-cyan/15 hover:bg-deep/70">
         {imagePreview ? (
           <div
             className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-elevated/60 bg-void"
@@ -60,8 +60,8 @@ export function ImageUploadZone({
             onClick={() => inputRef.current?.click()}
             disabled={disabled}
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-elevated/60 transition-colors",
-              "hover:border-cyan/40 hover:bg-cyan/5",
+              "dash-animate flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all duration-300",
+              "hover:bg-cyan/5",
               disabled && "pointer-events-none opacity-50",
             )}
           >

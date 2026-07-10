@@ -372,7 +372,9 @@ function TshirtPreviewSection({
   const backRef = useRef<SVGSVGElement>(null);
 
   const config = zones as unknown as DesignZoneConfig;
-  const colorHex = COLOR_HEX[color?.toLowerCase() ?? ""] ?? "#1a1a1a";
+  const colorHex = color?.startsWith("#")
+    ? color
+    : (COLOR_HEX[color?.toLowerCase() ?? ""] ?? "#1a1a1a");
   const frontOnly: DesignZoneConfig = {
     pechoBolsillo: config.pechoBolsillo,
     abdominalGrande: config.abdominalGrande,
@@ -391,37 +393,35 @@ function TshirtPreviewSection({
           Preview de la camiseta
         </h3>
       </div>
-      <div className="flex flex-wrap gap-6">
-        <div className="flex flex-col items-center gap-2">
-          <TshirtPreviewThumbnail
-            ref={frontRef}
-            zoneConfig={hasFront ? frontOnly : { pechoBolsillo: undefined, abdominalGrande: undefined }}
-            colorHex={colorHex}
-            forceSide="front"
-            className="relative aspect-[3/4] h-[200px]"
-          />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div className="h-[200px] w-[150px]">
+            <TshirtPreviewThumbnail
+              ref={frontRef}
+              zoneConfig={hasFront ? frontOnly : { pechoBolsillo: undefined, abdominalGrande: undefined }}
+              colorHex={colorHex}
+              forceSide="front"
+              className="h-full w-full"
+            />
+          </div>
           <span className="text-[10px] font-medium text-text-muted">Frente</span>
-          {!hasFront && (
-            <span className="text-[10px] text-text-muted/60">Sin diseño</span>
-          )}
           <DownloadPreviewButton
             svgRef={frontRef}
             side="front"
             orderNumber={orderNumber}
           />
         </div>
-        <div className="flex flex-col items-center gap-2">
-          <TshirtPreviewThumbnail
-            ref={backRef}
-            zoneConfig={hasBack ? backOnly : { espaldaGrande: undefined }}
-            colorHex={colorHex}
-            forceSide="back"
-            className="relative aspect-[3/4] h-[200px]"
-          />
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div className="h-[200px] w-[150px]">
+            <TshirtPreviewThumbnail
+              ref={backRef}
+              zoneConfig={hasBack ? backOnly : { espaldaGrande: undefined }}
+              colorHex={colorHex}
+              forceSide="back"
+              className="h-full w-full"
+            />
+          </div>
           <span className="text-[10px] font-medium text-text-muted">Espalda</span>
-          {!hasBack && (
-            <span className="text-[10px] text-text-muted/60">Sin diseño</span>
-          )}
           <DownloadPreviewButton
             svgRef={backRef}
             side="back"
@@ -480,7 +480,9 @@ function OrderDetail({
               <span
                 className="inline-block h-4 w-4 rounded-full border border-elevated"
                 style={{
-                  backgroundColor: COLOR_HEX[snap.color?.toLowerCase() ?? ""] ?? "#888",
+                  backgroundColor: snap.color?.startsWith("#")
+                    ? snap.color
+                    : (COLOR_HEX[snap.color?.toLowerCase() ?? ""] ?? "#888"),
                 }}
               />
               <span className="font-medium text-text-primary">

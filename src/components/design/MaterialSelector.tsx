@@ -22,10 +22,10 @@ export function MaterialSelector({ value, onChange }: MaterialSelectorProps) {
             type="button"
             onClick={() => onChange(m.value as TshirtMaterial)}
             className={cn(
-              "rounded-xl border px-3.5 py-2.5 text-left transition-all duration-200",
+              "rounded-lg border px-3.5 py-2.5 text-left transition-all duration-300",
               value === m.value
-                ? "border-cyan/40 bg-cyan/5 shadow-[0_0_16px_rgba(0,240,255,0.1)]"
-                : "border-elevated/70 bg-deep hover:border-elevated",
+                ? "border-cyan/30 bg-cyan/5 shadow-[0_0_20px_rgba(0,240,255,0.1)] backdrop-blur-sm"
+                : "border-white/[0.06] bg-deep/60 hover:border-cyan/15 hover:bg-deep/80",
             )}
           >
             <span

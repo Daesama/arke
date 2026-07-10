@@ -16,3 +16,5 @@ screenshot-*.png
 dist/
 out/
 coverage/
+
+.vercel

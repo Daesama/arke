@@ -14,11 +14,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<Variant, string> = {
   primary:
-    "bg-cyan text-void hover:bg-cyan/90 shadow-[0_0_20px_rgba(0,240,255,0.15)] hover:shadow-[0_0_30px_rgba(0,240,255,0.3)] active:scale-[0.97]",
+    "bg-cyan text-void hover:bg-cyan/90 shadow-[0_0_20px_rgba(0,240,255,0.18)] hover:shadow-[0_0_40px_rgba(0,240,255,0.35)] hover:scale-[1.03] active:scale-[0.97]",
   secondary:
-    "bg-surface/80 text-text-primary border border-elevated/80 hover:border-cyan/30 hover:text-cyan hover:bg-cyan/5 active:scale-[0.97]",
+    "bg-surface/60 backdrop-blur-sm text-text-primary border border-elevated/60 hover:border-cyan/30 hover:text-cyan hover:bg-cyan/5 hover:scale-[1.02] active:scale-[0.97]",
   ghost: "text-text-secondary hover:text-text-primary hover:bg-surface/60 active:scale-[0.97]",
-  danger: "bg-magenta/10 text-magenta border border-magenta/20 hover:bg-magenta/15 active:scale-[0.97]",
+  danger: "bg-magenta/10 text-magenta border border-magenta/20 hover:bg-magenta/15 hover:scale-[1.02] active:scale-[0.97]",
 };
 
 const sizeStyles: Record<Size, string> = {
@@ -34,7 +34,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || isLoading}
         className={cn(
-          "inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl font-heading font-medium whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan/40 focus-visible:ring-offset-2 focus-visible:ring-offset-void disabled:opacity-40 disabled:pointer-events-none",
+          "inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg font-heading font-medium whitespace-nowrap transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan/40 focus-visible:ring-offset-2 focus-visible:ring-offset-void disabled:opacity-40 disabled:pointer-events-none",
           variantStyles[variant],
           sizeStyles[size],
           className,

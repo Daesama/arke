@@ -398,7 +398,7 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2">
-        <div className="rounded-2xl bg-surface/80 p-5 text-text-muted">
+        <div className="rounded-2xl bg-surface/40 p-5 text-text-muted backdrop-blur-xl">
           <Package className="h-10 w-10" />
         </div>
         <p className="mt-2 text-sm text-text-muted">No hay items en tu carrito.</p>
@@ -505,8 +505,8 @@ export default function CheckoutPage() {
               className={cn(
                 "flex items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-medium transition-all duration-300",
                 step >= s.id
-                  ? "border border-cyan/25 bg-cyan/[0.08] text-cyan shadow-[0_0_16px_rgba(0,240,255,0.08)]"
-                  : "border border-elevated/60 bg-surface/60 text-text-muted",
+                  ? "border border-cyan/30 bg-cyan/[0.08] text-cyan shadow-[0_0_24px_rgba(0,240,255,0.12)] backdrop-blur-sm"
+                  : "border border-white/[0.06] bg-surface/30 text-text-muted backdrop-blur-sm",
               )}
             >
               <s.icon className="h-4 w-4" />
@@ -516,7 +516,9 @@ export default function CheckoutPage() {
               <div
                 className={cn(
                   "h-px w-8 transition-colors duration-300",
-                  step > s.id ? "bg-cyan/60" : "bg-elevated/50",
+                  step > s.id
+                    ? "bg-gradient-to-r from-cyan/60 to-cyan/30"
+                    : "bg-elevated/30",
                 )}
               />
             )}
@@ -587,7 +589,7 @@ export default function CheckoutPage() {
                 id="localidad"
                 value={shipping.localidad}
                 onChange={(e) => updateField("localidad", e.target.value)}
-                className="w-full rounded-xl border border-elevated/80 bg-deep px-4 py-3 text-sm text-text-primary transition-all duration-200 focus:border-cyan/60 focus:outline-none focus:ring-2 focus:ring-cyan/15"
+                className="w-full rounded-lg border border-elevated/60 bg-deep/80 backdrop-blur-sm px-4 py-3 text-sm text-text-primary transition-all duration-300 focus:border-cyan/50 focus:outline-none focus:ring-2 focus:ring-cyan/20 focus:shadow-[0_0_20px_rgba(0,240,255,0.08)]"
                 required
               >
                 <option value="" disabled>
@@ -714,7 +716,7 @@ export default function CheckoutPage() {
               <ChevronLeft className="mr-2 h-4 w-4" />
               Volver
             </Button>
-            <Button onClick={handlePay} isLoading={loading}>
+            <Button onClick={handlePay} isLoading={loading} className="animate-glow-cyan-pulse">
               <ShieldCheck className="mr-2 h-4 w-4" />
               Pagar con Wompi
             </Button>

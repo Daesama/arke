@@ -24,7 +24,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-elevated/40 bg-void/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-void/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
           <Image
@@ -32,14 +32,14 @@ export function Header() {
             alt="ARKE"
             width={32}
             height={32}
-            className="sm:hidden"
+            className="animate-logo-shimmer sm:hidden"
           />
           <Image
             src="/brand/logo-horizontal-color.svg"
             alt="ARKE"
             width={120}
             height={32}
-            className="hidden sm:block"
+            className="hidden animate-logo-shimmer sm:block"
             priority
           />
         </Link>
@@ -49,7 +49,7 @@ export function Header() {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-lg px-3.5 py-2 text-[13px] font-medium text-text-secondary transition-all duration-200 hover:bg-surface/50 hover:text-text-primary"
+              className="nav-link-animate rounded-lg px-3.5 py-2 text-[13px] font-medium text-text-secondary transition-all duration-300 hover:text-text-primary"
             >
               {link.label}
             </Link>
@@ -97,7 +97,7 @@ export function Header() {
 
       <div
         className={cn(
-          "border-t border-elevated/40 bg-void/95 backdrop-blur-xl md:hidden",
+          "border-t border-white/[0.06] bg-void/90 backdrop-blur-2xl md:hidden",
           mobileMenuOpen ? "block" : "hidden",
         )}
       >

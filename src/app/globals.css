@@ -12,6 +12,7 @@ body {
   color: #EEEEF0;
 }
 
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -23,16 +24,88 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #2A2A3A;
   border-radius: 3px;
+  transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #5A5A6E;
+  background: rgba(0, 240, 255, 0.4);
 }
 
+/* ── Autofill ── */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
   -webkit-text-fill-color: #EEEEF0;
   -webkit-box-shadow: 0 0 0px 1000px #12121A inset;
   transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ══════════════════════════════════════
+   ARKE Visual Effects
+   ══════════════════════════════════════ */
+
+/* Nav link animated underline */
+.nav-link-animate {
+  position: relative;
+}
+
+.nav-link-animate::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 0;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, #00F0FF, transparent);
+  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: translateX(-50%);
+}
+
+.nav-link-animate:hover::after {
+  width: 80%;
+}
+
+/* Gradient border via mask-composite */
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 240, 255, 0.25),
+    rgba(139, 92, 246, 0.15),
+    rgba(255, 45, 149, 0.08),
+    transparent 60%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.gradient-border-subtle::before {
+  opacity: 0.5;
+}
+
+.gradient-border-subtle:hover::before {
+  opacity: 1;
+}
+
+/* Animated dash border for upload zones */
+.dash-animate {
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='8' ry='8' stroke='%232A2A3A' stroke-width='2' stroke-dasharray='8%2c 6' stroke-dashoffset='0' stroke-linecap='round'/%3e%3c/svg%3e");
+  transition: all 0.3s ease;
+}
+
+.dash-animate:hover {
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='8' ry='8' stroke='%2300F0FF' stroke-width='2' stroke-dasharray='8%2c 6' stroke-dashoffset='0' stroke-linecap='round' stroke-opacity='0.4'/%3e%3c/svg%3e");
 }

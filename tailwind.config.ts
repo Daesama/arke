@@ -73,6 +73,11 @@ const config: Config = {
         "fade-in": "fadeIn 0.5s ease-out",
         "fade-up": "fadeUp 0.5s ease-out",
         "glow-pulse": "glowPulse 2s ease-in-out infinite",
+        "glow-cyan-pulse": "glowCyanPulse 2.5s ease-in-out infinite",
+        "logo-shimmer": "logoShimmer 3s ease-in-out infinite",
+        "grid-breathe": "gridBreathe 8s ease-in-out infinite",
+        "float": "float 6s ease-in-out infinite",
+        "gradient-shift": "gradientShift 6s ease-in-out infinite",
       },
       keyframes: {
         fadeIn: {
@@ -86,6 +91,34 @@ const config: Config = {
         glowPulse: {
           "0%, 100%": { boxShadow: "0 0 20px rgba(0, 240, 255, 0.2)" },
           "50%": { boxShadow: "0 0 40px rgba(0, 240, 255, 0.5)" },
+        },
+        glowCyanPulse: {
+          "0%, 100%": {
+            boxShadow: "0 0 20px rgba(0, 240, 255, 0.15), 0 0 60px rgba(0, 240, 255, 0.05)",
+          },
+          "50%": {
+            boxShadow: "0 0 30px rgba(0, 240, 255, 0.35), 0 0 80px rgba(0, 240, 255, 0.1)",
+          },
+        },
+        logoShimmer: {
+          "0%, 100%": {
+            filter: "brightness(1) drop-shadow(0 0 6px rgba(0, 240, 255, 0.1))",
+          },
+          "50%": {
+            filter: "brightness(1.08) drop-shadow(0 0 20px rgba(0, 240, 255, 0.35))",
+          },
+        },
+        gridBreathe: {
+          "0%, 100%": { opacity: "0.03" },
+          "50%": { opacity: "0.07" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-12px)" },
+        },
+        gradientShift: {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
         },
       },
     },

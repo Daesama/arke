@@ -22,10 +22,10 @@ export function GenderSelector({ value, onChange }: GenderSelectorProps) {
             type="button"
             onClick={() => onChange(g.value as TshirtGenero)}
             className={cn(
-              "flex-1 rounded-xl border px-4 py-2 text-xs font-medium transition-all duration-200",
+              "flex-1 rounded-lg border px-4 py-2 text-xs font-medium transition-all duration-300",
               value === g.value
-                ? "border-cyan/40 bg-cyan/[0.08] text-cyan shadow-[0_0_16px_rgba(0,240,255,0.12)]"
-                : "border-elevated/70 text-text-secondary hover:border-elevated hover:text-text-primary",
+                ? "border-cyan/30 bg-cyan/[0.08] text-cyan shadow-[0_0_20px_rgba(0,240,255,0.12)] backdrop-blur-sm"
+                : "border-white/[0.06] text-text-secondary hover:border-cyan/20 hover:text-text-primary hover:bg-surface/30",
             )}
           >
             {g.label}

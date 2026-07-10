@@ -308,8 +308,8 @@ export default function CrearPage() {
   return (
     <div className="relative mx-auto flex h-[calc(100vh-4.25rem)] max-w-7xl flex-col">
       {showAuthModal && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-lg">
-          <div className="mx-4 w-full max-w-sm rounded-2xl border border-elevated/60 bg-surface p-8 text-center shadow-2xl shadow-void/60">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-void/70 backdrop-blur-xl">
+          <div className="gradient-border mx-4 w-full max-w-sm rounded-2xl bg-surface/50 p-8 text-center shadow-2xl shadow-void/60 backdrop-blur-xl">
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan/10 text-cyan">
               <LogIn className="h-7 w-7" />
             </div>
@@ -341,7 +341,7 @@ export default function CrearPage() {
       )}
 
       {/* Mobile tabs */}
-      <div className="flex border-b border-elevated/40 bg-deep/50 lg:hidden">
+      <div className="flex border-b border-white/[0.06] bg-deep/40 backdrop-blur-sm lg:hidden">
         <button
           type="button"
           onClick={() => setActiveTab("config")}
@@ -376,7 +376,7 @@ export default function CrearPage() {
         {/* Left panel — Configuration */}
         <div
           className={cn(
-            "flex flex-col border-r border-elevated/50 lg:w-[420px] lg:min-w-[380px]",
+            "flex flex-col border-r border-white/[0.06] bg-gradient-to-b from-deep/80 to-void/90 lg:w-[420px] lg:min-w-[380px]",
             activeTab === "config" ? "flex w-full" : "hidden lg:flex",
           )}
         >
@@ -484,7 +484,7 @@ export default function CrearPage() {
           </div>
 
           {/* Bottom — Price + Add to cart */}
-          <div className="shrink-0 border-t border-elevated/50 bg-void/95 px-4 py-3 space-y-2.5 shadow-[0_-4px_20px_rgba(10,10,15,0.5)]">
+          <div className="shrink-0 border-t border-white/[0.06] bg-void/90 px-4 py-3 space-y-2.5 shadow-[0_-8px_30px_rgba(10,10,15,0.6)] backdrop-blur-xl">
             {uploadError && (
               <div className="rounded-xl border border-magenta/20 bg-magenta/[0.07] px-3 py-2.5 text-xs text-magenta">
                 {uploadError}
@@ -536,8 +536,8 @@ export default function CrearPage() {
             activeTab === "preview" ? "block" : "hidden",
           )}
         >
-          <div className="flex h-full flex-col rounded-2xl border border-elevated/50 bg-deep">
-            <div className="flex items-center justify-between border-b border-elevated/40 px-5 py-3">
+          <div className="gradient-border flex h-full flex-col rounded-2xl bg-deep/60 backdrop-blur-sm">
+            <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
               <p className="text-sm font-medium text-text-primary font-heading">Preview</p>
               <p className="font-mono text-[11px] text-text-muted">
                 {size ?? "—"} / {colorName}
@@ -563,7 +563,7 @@ export default function CrearPage() {
             </div>
 
             {/* Zone indicators */}
-            <div className="border-t border-elevated/40 px-5 py-3">
+            <div className="border-t border-white/[0.06] px-5 py-3">
               <div className="flex flex-wrap gap-2">
                 {ZONES.map((zone) => {
                   const hasImage = !!zones[zone.key].file;
