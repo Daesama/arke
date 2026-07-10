@@ -306,11 +306,11 @@ export default function CrearPage() {
   }
 
   return (
-    <div className="relative mx-auto flex h-[calc(100vh-4rem)] max-w-7xl flex-col">
+    <div className="relative mx-auto flex h-[calc(100vh-4.25rem)] max-w-7xl flex-col">
       {showAuthModal && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm">
-          <div className="mx-4 w-full max-w-sm rounded-xl border border-elevated bg-surface p-6 text-center shadow-glow-cyan">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-lg">
+          <div className="mx-4 w-full max-w-sm rounded-2xl border border-elevated/60 bg-surface p-8 text-center shadow-2xl shadow-void/60">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan/10 text-cyan">
               <LogIn className="h-7 w-7" />
             </div>
             <h2 className="font-heading text-xl font-medium text-text-primary">
@@ -341,15 +341,15 @@ export default function CrearPage() {
       )}
 
       {/* Mobile tabs */}
-      <div className="flex border-b border-elevated lg:hidden">
+      <div className="flex border-b border-elevated/40 bg-deep/50 lg:hidden">
         <button
           type="button"
           onClick={() => setActiveTab("config")}
           className={cn(
-            "flex flex-1 items-center justify-center gap-2 py-3 text-sm transition-colors",
+            "flex flex-1 items-center justify-center gap-2 py-3 text-[13px] font-medium transition-all duration-200",
             activeTab === "config"
               ? "border-b-2 border-cyan text-cyan"
-              : "text-text-secondary",
+              : "text-text-muted hover:text-text-secondary",
           )}
         >
           <Settings2 className="h-4 w-4" />
@@ -359,15 +359,15 @@ export default function CrearPage() {
           type="button"
           onClick={() => setActiveTab("preview")}
           className={cn(
-            "flex flex-1 items-center justify-center gap-2 py-3 text-sm transition-colors",
+            "flex flex-1 items-center justify-center gap-2 py-3 text-[13px] font-medium transition-all duration-200",
             activeTab === "preview"
               ? "border-b-2 border-cyan text-cyan"
-              : "text-text-secondary",
+              : "text-text-muted hover:text-text-secondary",
           )}
         >
           <Eye className="h-4 w-4" />
           Preview
-          {hasAnyImage && <span className="h-2 w-2 rounded-full bg-cyan" />}
+          {hasAnyImage && <span className="h-1.5 w-1.5 rounded-full bg-cyan shadow-[0_0_8px_rgba(0,240,255,0.5)]" />}
         </button>
       </div>
 
@@ -376,11 +376,11 @@ export default function CrearPage() {
         {/* Left panel — Configuration */}
         <div
           className={cn(
-            "flex flex-col border-r border-elevated lg:w-[420px] lg:min-w-[380px]",
+            "flex flex-col border-r border-elevated/50 lg:w-[420px] lg:min-w-[380px]",
             activeTab === "config" ? "flex w-full" : "hidden lg:flex",
           )}
         >
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="flex-1 overflow-y-auto p-4">
           <div className="flex flex-col gap-3">
             {/* 1. Gender */}
             <GenderSelector value={genero} onChange={setGenero} />
@@ -429,15 +429,15 @@ export default function CrearPage() {
                   />
                 </div>
 
-                <div className="flex shrink-0 overflow-hidden rounded-lg border border-elevated">
+                <div className="flex shrink-0 overflow-hidden rounded-xl border border-elevated/60 bg-deep/50">
                   <button
                     type="button"
                     onClick={() => setSide("front")}
                     className={cn(
-                      "px-3 py-1.5 text-xs transition-all",
+                      "px-3.5 py-1.5 text-xs font-medium transition-all duration-200",
                       side === "front"
-                        ? "bg-cyan/10 text-cyan"
-                        : "text-text-secondary hover:text-text-primary",
+                        ? "bg-cyan/[0.08] text-cyan"
+                        : "text-text-muted hover:text-text-secondary",
                     )}
                   >
                     Frente
@@ -446,10 +446,10 @@ export default function CrearPage() {
                     type="button"
                     onClick={() => setSide("back")}
                     className={cn(
-                      "px-3 py-1.5 text-xs transition-all",
+                      "px-3.5 py-1.5 text-xs font-medium transition-all duration-200",
                       side === "back"
-                        ? "bg-cyan/10 text-cyan"
-                        : "text-text-secondary hover:text-text-primary",
+                        ? "bg-cyan/[0.08] text-cyan"
+                        : "text-text-muted hover:text-text-secondary",
                     )}
                   >
                     Espalda
@@ -484,15 +484,15 @@ export default function CrearPage() {
           </div>
 
           {/* Bottom — Price + Add to cart */}
-          <div className="shrink-0 border-t border-elevated bg-void px-3 py-2.5 space-y-2">
+          <div className="shrink-0 border-t border-elevated/50 bg-void/95 px-4 py-3 space-y-2.5 shadow-[0_-4px_20px_rgba(10,10,15,0.5)]">
             {uploadError && (
-              <div className="rounded-lg border border-magenta/30 bg-magenta/10 px-3 py-2 text-xs text-magenta">
+              <div className="rounded-xl border border-magenta/20 bg-magenta/[0.07] px-3 py-2.5 text-xs text-magenta">
                 {uploadError}
               </div>
             )}
 
             {added && (
-              <div className="rounded-lg border border-cyan/30 bg-cyan/10 px-3 py-2 text-xs text-cyan text-center">
+              <div className="rounded-xl border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-xs text-cyan text-center">
                 ¡Agregado al carrito!
               </div>
             )}
@@ -536,10 +536,10 @@ export default function CrearPage() {
             activeTab === "preview" ? "block" : "hidden",
           )}
         >
-          <div className="flex h-full flex-col rounded-xl border border-elevated bg-deep">
-            <div className="flex items-center justify-between border-b border-elevated px-4 py-3">
+          <div className="flex h-full flex-col rounded-2xl border border-elevated/50 bg-deep">
+            <div className="flex items-center justify-between border-b border-elevated/40 px-5 py-3">
               <p className="text-sm font-medium text-text-primary font-heading">Preview</p>
-              <p className="font-mono text-xs text-text-muted">
+              <p className="font-mono text-[11px] text-text-muted">
                 {size ?? "—"} / {colorName}
                 {genero ? ` / ${genero === "mujer" ? "Mujer" : "Hombre"}` : ""}
               </p>
@@ -563,7 +563,7 @@ export default function CrearPage() {
             </div>
 
             {/* Zone indicators */}
-            <div className="border-t border-elevated px-4 py-3">
+            <div className="border-t border-elevated/40 px-5 py-3">
               <div className="flex flex-wrap gap-2">
                 {ZONES.map((zone) => {
                   const hasImage = !!zones[zone.key].file;
@@ -571,15 +571,15 @@ export default function CrearPage() {
                     <span
                       key={zone.key}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]",
+                        "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] transition-colors duration-200",
                         hasImage
-                          ? "border-cyan/30 bg-cyan/5 text-cyan"
-                          : "border-elevated text-text-muted",
+                          ? "border-cyan/20 bg-cyan/5 text-cyan"
+                          : "border-elevated/60 text-text-muted",
                       )}
                     >
                       <span className={cn(
-                        "h-1.5 w-1.5 rounded-full",
-                        hasImage ? "bg-cyan" : "bg-text-muted",
+                        "h-1.5 w-1.5 rounded-full transition-colors duration-200",
+                        hasImage ? "bg-cyan shadow-[0_0_6px_rgba(0,240,255,0.5)]" : "bg-text-muted/50",
                       )} />
                       {zone.label}
                     </span>

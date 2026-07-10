@@ -42,10 +42,10 @@ export function ImageUploadZone({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-2.5 rounded-lg border border-elevated bg-deep px-2.5 py-2">
+      <div className="flex items-center gap-2.5 rounded-xl border border-elevated/70 bg-deep/80 px-3 py-2.5 transition-colors duration-200 hover:border-elevated">
         {imagePreview ? (
           <div
-            className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border border-elevated bg-void"
+            className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-elevated/60 bg-void"
             onClick={() => inputRef.current?.click()}
           >
             <img
@@ -60,8 +60,8 @@ export function ImageUploadZone({
             onClick={() => inputRef.current?.click()}
             disabled={disabled}
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-2 border-dashed border-elevated transition-colors",
-              "hover:border-cyan/50 hover:bg-cyan/5",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-elevated/60 transition-colors",
+              "hover:border-cyan/40 hover:bg-cyan/5",
               disabled && "pointer-events-none opacity-50",
             )}
           >
@@ -85,7 +85,7 @@ export function ImageUploadZone({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={disabled}
-            className="shrink-0 rounded-md border border-elevated px-2 py-1 text-[10px] text-text-secondary transition-colors hover:border-cyan/50 hover:text-cyan"
+            className="shrink-0 rounded-lg border border-elevated/60 px-2.5 py-1 text-[10px] font-medium text-text-secondary transition-colors hover:border-cyan/30 hover:text-cyan hover:bg-cyan/5"
           >
             Subir
           </button>

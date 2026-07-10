@@ -13,16 +13,16 @@ export default function CarritoPage() {
   if (items.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-        <div className="rounded-xl bg-surface p-4 text-text-muted">
+        <div className="rounded-2xl bg-surface/80 p-5 text-text-muted">
           <ShoppingCart className="h-10 w-10" />
         </div>
-        <h1 className="mt-4 font-heading text-xl font-medium text-text-primary">
+        <h1 className="mt-5 font-heading text-xl font-medium text-text-primary">
           Tu carrito está vacío
         </h1>
         <p className="mt-2 text-sm text-text-secondary">
           Sube tu diseño y agrégalo a tu carrito.
         </p>
-        <Link href="/crear" className="mt-6">
+        <Link href="/crear" className="mt-8">
           <Button>Crear diseño</Button>
         </Link>
       </div>
@@ -31,11 +31,12 @@ export default function CarritoPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-      <h1 className="mb-8 font-heading text-2xl font-medium text-cyan">
+      <h1 className="mb-2 font-heading text-2xl font-medium text-text-primary sm:text-3xl">
         Tu carrito
       </h1>
+      <p className="mb-8 text-sm text-text-muted">{items.length} {items.length === 1 ? "artículo" : "artículos"}</p>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {items.map((item) => {
           const activeZones = getActiveZonesFromConfig(item.designConfig);
           const breakdown = getDesglose(item.material, item.genero, activeZones);
@@ -43,9 +44,9 @@ export default function CarritoPage() {
           return (
             <div
               key={item.id}
-              className="flex gap-4 rounded-xl border border-elevated bg-surface p-4"
+              className="flex gap-4 rounded-2xl border border-elevated/70 bg-surface/80 p-4 transition-all duration-200 hover:border-elevated"
             >
-              <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg bg-deep">
+              <div className="h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-deep">
                 {(item.previewBase64 || item.designImageUrl) && (
                   <img
                     src={item.previewBase64 ?? item.designImageUrl}
@@ -83,22 +84,22 @@ export default function CarritoPage() {
                 </div>
 
                 <div className="mt-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => updateQuantity(item.id, item.quantity - 1)}
                       disabled={item.quantity <= 1}
-                      className="rounded-md border border-elevated p-1 text-text-secondary transition-colors hover:border-text-muted disabled:opacity-30"
+                      className="rounded-lg border border-elevated/70 p-1.5 text-text-secondary transition-all duration-200 hover:border-elevated hover:bg-surface disabled:opacity-30"
                     >
                       <Minus className="h-3 w-3" />
                     </button>
-                    <span className="w-8 text-center text-sm text-text-primary">
+                    <span className="w-8 text-center font-mono text-sm text-text-primary">
                       {item.quantity}
                     </span>
                     <button
                       type="button"
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="rounded-md border border-elevated p-1 text-text-secondary transition-colors hover:border-text-muted"
+                      className="rounded-lg border border-elevated/70 p-1.5 text-text-secondary transition-all duration-200 hover:border-elevated hover:bg-surface"
                     >
                       <Plus className="h-3 w-3" />
                     </button>
@@ -124,26 +125,26 @@ export default function CarritoPage() {
         })}
       </div>
 
-      <div className="mt-8 rounded-xl border border-elevated bg-surface p-6">
-        <div className="space-y-2">
+      <div className="mt-8 rounded-2xl border border-elevated/70 bg-surface/80 p-6">
+        <div className="space-y-2.5">
           <div className="flex justify-between text-sm">
             <span className="text-text-secondary">Subtotal</span>
-            <span className="text-text-primary">{formatCOP(totalPrice())}</span>
+            <span className="font-mono text-text-primary">{formatCOP(totalPrice())}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-[#D0D0D8]">Envío Bogotá</span>
-            <span className="font-mono text-[#D0D0D8]">{formatCOP(ENVIO)}</span>
+            <span className="text-text-muted">Envío Bogotá</span>
+            <span className="font-mono text-text-muted">{formatCOP(ENVIO)}</span>
           </div>
-          <div className="border-t border-elevated pt-2">
-            <div className="flex justify-between">
+          <div className="border-t border-elevated/50 pt-3">
+            <div className="flex justify-between items-center">
               <span className="font-medium text-text-primary">Total</span>
-              <span className="font-heading text-xl font-medium text-text-primary">
+              <span className="font-heading text-xl font-medium text-cyan">
                 {formatCOP(totalPrice() + ENVIO)}
               </span>
             </div>
           </div>
         </div>
-        <Link href="/checkout" className="mt-4 block">
+        <Link href="/checkout" className="mt-5 block">
           <Button size="lg" className="w-full">
             Ir al checkout — {formatCOP(totalPrice() + ENVIO)}
           </Button>

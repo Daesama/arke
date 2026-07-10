@@ -20,10 +20,10 @@ export function SizeSelector({ value, onChange }: SizeSelectorProps) {
             type="button"
             onClick={() => onChange(s as TshirtSize)}
             className={cn(
-              "rounded-md border px-2.5 py-1 text-[11px] transition-all duration-200",
+              "rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-all duration-200",
               value === s
-                ? "border-cyan bg-cyan/10 text-cyan"
-                : "border-elevated text-text-secondary hover:border-text-muted hover:text-text-primary",
+                ? "border-cyan/40 bg-cyan/[0.08] text-cyan"
+                : "border-elevated/70 text-text-secondary hover:border-elevated hover:text-text-primary",
             )}
           >
             {s}

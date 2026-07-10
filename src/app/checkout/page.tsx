@@ -397,10 +397,12 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
-        <Package className="h-12 w-12 text-text-muted" />
-        <p className="text-text-muted">No hay items en tu carrito.</p>
-        <a href="/crear">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2">
+        <div className="rounded-2xl bg-surface/80 p-5 text-text-muted">
+          <Package className="h-10 w-10" />
+        </div>
+        <p className="mt-2 text-sm text-text-muted">No hay items en tu carrito.</p>
+        <a href="/crear" className="mt-4">
           <Button variant="secondary">Crear diseño</Button>
         </a>
       </div>
@@ -412,7 +414,7 @@ export default function CheckoutPage() {
       <div className="mx-auto flex min-h-[60vh] max-w-md items-center px-4">
         <Card className="w-full">
           <div className="flex flex-col items-center py-8 text-center">
-            <div className="rounded-full bg-cyan/10 p-4">
+            <div className="rounded-2xl bg-cyan/[0.08] p-4">
               <LogIn className="h-10 w-10 text-cyan" />
             </div>
             <h2 className="mt-6 font-heading text-xl font-medium text-text-primary">
@@ -496,15 +498,15 @@ export default function CheckoutPage() {
       </div>
 
       {/* Stepper */}
-      <div className="mb-10 flex items-center justify-center gap-2">
+      <div className="mb-10 flex items-center justify-center gap-3">
         {STEPS.map((s, i) => (
-          <div key={s.id} className="flex items-center gap-2">
+          <div key={s.id} className="flex items-center gap-3">
             <div
               className={cn(
-                "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all",
+                "flex items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-medium transition-all duration-300",
                 step >= s.id
-                  ? "border border-cyan/30 bg-cyan/10 text-cyan"
-                  : "border border-elevated bg-surface text-text-muted",
+                  ? "border border-cyan/25 bg-cyan/[0.08] text-cyan shadow-[0_0_16px_rgba(0,240,255,0.08)]"
+                  : "border border-elevated/60 bg-surface/60 text-text-muted",
               )}
             >
               <s.icon className="h-4 w-4" />
@@ -513,8 +515,8 @@ export default function CheckoutPage() {
             {i < STEPS.length - 1 && (
               <div
                 className={cn(
-                  "h-px w-8 transition-colors",
-                  step > s.id ? "bg-cyan" : "bg-elevated",
+                  "h-px w-8 transition-colors duration-300",
+                  step > s.id ? "bg-cyan/60" : "bg-elevated/50",
                 )}
               />
             )}
@@ -524,7 +526,7 @@ export default function CheckoutPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="mb-6 rounded-lg border border-magenta/30 bg-magenta/10 px-4 py-3 text-sm text-magenta">
+        <div className="mb-6 rounded-xl border border-magenta/20 bg-magenta/[0.07] px-4 py-3 text-sm text-magenta">
           {error}
         </div>
       )}
@@ -532,7 +534,7 @@ export default function CheckoutPage() {
       {/* ───────── STEP 1: Datos de envío ───────── */}
       {step === 1 && (
         <Card>
-          <h2 className="mb-2 font-heading text-xl font-medium text-cyan">
+          <h2 className="mb-2 font-heading text-xl font-medium text-text-primary">
             Datos de envío
           </h2>
           <p className="mb-6 text-sm text-text-muted">
@@ -577,7 +579,7 @@ export default function CheckoutPage() {
             <div className="space-y-1.5">
               <label
                 htmlFor="localidad"
-                className="block text-sm font-medium text-text-primary"
+                className="block text-[11px] font-medium uppercase tracking-wider text-text-muted"
               >
                 Localidad
               </label>
@@ -585,7 +587,7 @@ export default function CheckoutPage() {
                 id="localidad"
                 value={shipping.localidad}
                 onChange={(e) => updateField("localidad", e.target.value)}
-                className="w-full rounded-lg border border-elevated bg-deep px-4 py-2.5 text-sm text-text-primary transition-colors focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan"
+                className="w-full rounded-xl border border-elevated/80 bg-deep px-4 py-3 text-sm text-text-primary transition-all duration-200 focus:border-cyan/60 focus:outline-none focus:ring-2 focus:ring-cyan/15"
                 required
               >
                 <option value="" disabled>
@@ -621,10 +623,10 @@ export default function CheckoutPage() {
       {step === 2 && (
         <div className="space-y-6">
           <Card>
-            <h2 className="mb-4 font-heading text-xl font-medium text-cyan">
+            <h2 className="mb-4 font-heading text-xl font-medium text-text-primary">
               Resumen del pedido
             </h2>
-            <div className="divide-y divide-elevated">
+            <div className="divide-y divide-elevated/50">
               {items.map((item) => {
                 const activeZones = getActiveZonesFromConfig(item.designConfig);
                 const bd = getDesglose(item.material, item.genero, activeZones);
@@ -689,16 +691,16 @@ export default function CheckoutPage() {
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-text-secondary">Subtotal</span>
-                <span className="text-text-primary">{formatCOP(subtotal)}</span>
+                <span className="font-mono text-text-primary">{formatCOP(subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[#D0D0D8]">Envío Bogotá</span>
-                <span className="font-mono text-[#D0D0D8]">{formatCOP(ENVIO)}</span>
+                <span className="text-text-muted">Envío Bogotá</span>
+                <span className="font-mono text-text-muted">{formatCOP(ENVIO)}</span>
               </div>
-              <div className="border-t border-elevated pt-3">
-                <div className="flex justify-between">
+              <div className="border-t border-elevated/50 pt-3">
+                <div className="flex justify-between items-center">
                   <span className="font-medium text-text-primary">Total</span>
-                  <span className="font-heading text-xl font-medium text-text-primary">
+                  <span className="font-heading text-xl font-medium text-cyan">
                     {formatCOP(total)}
                   </span>
                 </div>
@@ -729,7 +731,7 @@ export default function CheckoutPage() {
             </button>
           )}
 
-          <p className="text-center text-xs text-text-muted">
+          <p className="text-center font-mono text-[11px] text-text-muted/70">
             Serás redirigido a la página de pago seguro de Wompi.
           </p>
         </div>
@@ -738,9 +740,11 @@ export default function CheckoutPage() {
       {/* ───────── STEP 3: Procesando pago ───────── */}
       {step === 3 && (
         <Card>
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-10 w-10 animate-spin text-cyan" />
-            <p className="mt-4 font-heading text-lg font-medium text-text-primary">
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="rounded-2xl bg-cyan/[0.06] p-5">
+              <Loader2 className="h-8 w-8 animate-spin text-cyan" />
+            </div>
+            <p className="mt-6 font-heading text-lg font-medium text-text-primary">
               Procesando tu pedido...
             </p>
             <p className="mt-2 text-sm text-text-muted">
@@ -749,7 +753,7 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={cancelProcessing}
-              className="mt-6 text-sm text-text-muted transition-colors hover:text-magenta"
+              className="mt-8 text-sm text-text-muted transition-colors hover:text-magenta"
             >
               Cancelar
             </button>
