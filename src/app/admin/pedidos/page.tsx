@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils/cn";
 import type { Order, OrderItem, OrderStatus } from "@/types/database";
 import type { DesignZoneConfig } from "@/types/design";
 import { TshirtPreviewThumbnail } from "@/components/design/TshirtPreviewThumbnail";
+import { downloadTshirtPreview } from "@/lib/utils/downloadPreview";
 import { Shirt } from "lucide-react";
 
 interface OrderWithItems extends Order {
@@ -315,6 +316,51 @@ function OrderStatusSelector({
   );
 }
 
+function DownloadPreviewButton({
+  zoneConfig,
+  colorHex,
+  side,
+  orderNumber,
+}: {
+  zoneConfig: DesignZoneConfig;
+  colorHex: string;
+  side: "front" | "back";
+  orderNumber: number;
+}) {
+  const [downloading, setDownloading] = useState(false);
+  const label = side === "front" ? "Descargar frente" : "Descargar espalda";
+  const filename = `pedido-ARKE-${orderNumber}-preview-${side === "front" ? "frente" : "espalda"}.png`;
+
+  async function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await downloadTshirtPreview(zoneConfig, colorHex, side, filename);
+    } catch (err) {
+      console.error("Error downloading preview:", err);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={downloading}
+      className="flex items-center gap-1.5 rounded-lg border border-cyan/30 bg-cyan/5 px-3 py-1.5 text-xs font-medium text-cyan transition-colors hover:bg-cyan/10 disabled:opacity-50"
+    >
+      {downloading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Download className="h-3.5 w-3.5" />
+      )}
+      {downloading ? "Generando..." : label}
+    </button>
+  );
+}
+
 function OrderDetail({
   order,
   item,
@@ -488,6 +534,7 @@ function OrderDetail({
         };
         const hasFront = !!(config.pechoBolsillo?.enabled || config.abdominalGrande?.enabled);
         const hasBack = !!config.espaldaGrande?.enabled;
+        const orderNum = order.order_number;
 
         return (
           <div className="rounded-lg border border-elevated bg-surface p-4">
@@ -509,6 +556,12 @@ function OrderDetail({
                 {!hasFront && (
                   <span className="text-[10px] text-text-muted/60">Sin diseño</span>
                 )}
+                <DownloadPreviewButton
+                  zoneConfig={frontOnly}
+                  colorHex={colorHex}
+                  side="front"
+                  orderNumber={orderNum}
+                />
               </div>
               <div className="flex flex-col items-center gap-2">
                 <TshirtPreviewThumbnail
@@ -521,6 +574,12 @@ function OrderDetail({
                 {!hasBack && (
                   <span className="text-[10px] text-text-muted/60">Sin diseño</span>
                 )}
+                <DownloadPreviewButton
+                  zoneConfig={backOnly}
+                  colorHex={colorHex}
+                  side="back"
+                  orderNumber={orderNum}
+                />
               </div>
             </div>
           </div>
