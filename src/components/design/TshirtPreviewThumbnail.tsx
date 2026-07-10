@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, forwardRef } from "react";
 import type { DesignZoneConfig } from "@/types/design";
 
 interface TshirtPreviewThumbnailProps {
@@ -41,12 +41,16 @@ const backCollar =
   " C192,72 180,78 160,80" +
   " C140,78 128,72 124,62 Z";
 
-export function TshirtPreviewThumbnail({
-  zoneConfig,
-  colorHex,
-  className,
-  forceSide,
-}: TshirtPreviewThumbnailProps) {
+const VB_W = 320;
+const VB_H = 420;
+
+export const TshirtPreviewThumbnail = forwardRef<
+  SVGSVGElement,
+  TshirtPreviewThumbnailProps
+>(function TshirtPreviewThumbnail(
+  { zoneConfig, colorHex, className, forceSide },
+  ref,
+) {
   const id = useId();
   const gradId = `tshirtGrad-${id}`;
 
@@ -70,105 +74,102 @@ export function TshirtPreviewThumbnail({
   const espOffX = espalda?.transform?.offsetX ?? 0;
   const espOffY = espalda?.transform?.offsetY ?? 0;
 
+  const pechoX = 0.27 * VB_W;
+  const pechoY = 0.24 * VB_H;
+  const pechoW = 0.15 * VB_W;
+
+  const abdW = (0.4 * abdScale) * VB_W;
+  const abdX = VB_W / 2 - abdW / 2 + (abdW * abdOffX) / 100;
+  const abdY = (0.32 + abdOffY / 100) * VB_H;
+
+  const espW = (0.48 * espScale) * VB_W;
+  const espX = VB_W / 2 - espW / 2 + (espW * espOffX) / 100;
+  const espY = (0.24 + espOffY / 100) * VB_H;
+
   return (
     <div className={className ?? "relative aspect-[3/4] h-[110px]"}>
-      <div className="relative h-full w-full">
-        <svg
-          viewBox="0 0 320 420"
-          className="h-full w-full"
-          style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.3))" }}
-        >
-          <defs>
-            <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={shadow} />
-              <stop offset="18%" stopColor={colorHex} />
-              <stop offset="45%" stopColor={highlight} />
-              <stop offset="82%" stopColor={colorHex} />
-              <stop offset="100%" stopColor={shadow} />
-            </linearGradient>
-          </defs>
+      <svg
+        ref={ref}
+        viewBox={`0 0 ${VB_W} ${VB_H}`}
+        className="h-full w-full"
+        style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.3))" }}
+      >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={shadow} />
+            <stop offset="18%" stopColor={colorHex} />
+            <stop offset="45%" stopColor={highlight} />
+            <stop offset="82%" stopColor={colorHex} />
+            <stop offset="100%" stopColor={shadow} />
+          </linearGradient>
+        </defs>
 
-          <path
-            d={bodyPath + (side === "front" ? frontCollar : backCollar)}
-            fill={`url(#${gradId})`}
-            stroke={seam}
-            strokeWidth="1"
-            strokeLinejoin="round"
-          />
+        <path
+          d={bodyPath + (side === "front" ? frontCollar : backCollar)}
+          fill={`url(#${gradId})`}
+          stroke={seam}
+          strokeWidth="1"
+          strokeLinejoin="round"
+        />
 
-          {side === "front" ? (
-            <>
-              <path
-                d="M124,62 C130,78 142,90 160,92 C178,90 190,78 196,62 C192,58 182,54 160,54 C138,54 128,58 124,62 Z"
-                fill={collar}
-                stroke={seam}
-                strokeWidth="0.6"
-              />
-              <path
-                d="M130,64 C135,76 146,86 160,88 C174,86 185,76 190,64 C186,60 176,58 160,58 C144,58 134,60 130,64 Z"
-                fill={collarInner}
-              />
-            </>
-          ) : (
+        {side === "front" ? (
+          <>
             <path
-              d="M124,62 C128,72 140,78 160,80 C180,78 192,72 196,62 C192,58 182,54 160,54 C138,54 128,58 124,62 Z"
+              d="M124,62 C130,78 142,90 160,92 C178,90 190,78 196,62 C192,58 182,54 160,54 C138,54 128,58 124,62 Z"
               fill={collar}
               stroke={seam}
               strokeWidth="0.6"
             />
-          )}
-        </svg>
+            <path
+              d="M130,64 C135,76 146,86 160,88 C174,86 185,76 190,64 C186,60 176,58 160,58 C144,58 134,60 130,64 Z"
+              fill={collarInner}
+            />
+          </>
+        ) : (
+          <path
+            d="M124,62 C128,72 140,78 160,80 C180,78 192,72 196,62 C192,58 182,54 160,54 C138,54 128,58 124,62 Z"
+            fill={collar}
+            stroke={seam}
+            strokeWidth="0.6"
+          />
+        )}
 
         {side === "front" && (
           <>
             {pecho?.imageUrl && (
-              <div className="absolute top-[24%] left-[27%] w-[15%]">
-                <img
-                  src={pecho.imageUrl}
-                  alt=""
-                  className="h-auto w-full object-contain"
-                  draggable={false}
-                />
-              </div>
+              <image
+                href={pecho.imageUrl}
+                x={pechoX}
+                y={pechoY}
+                width={pechoW}
+                height={pechoW}
+                preserveAspectRatio="xMidYMin meet"
+              />
             )}
             {abdominal?.imageUrl && (
-              <div
-                className="absolute left-1/2"
-                style={{
-                  top: `calc(32% + ${abdOffY}%)`,
-                  width: `${40 * abdScale}%`,
-                  transform: `translateX(calc(-50% + ${abdOffX}%))`,
-                }}
-              >
-                <img
-                  src={abdominal.imageUrl}
-                  alt=""
-                  className="h-auto w-full object-contain"
-                  draggable={false}
-                />
-              </div>
+              <image
+                href={abdominal.imageUrl}
+                x={abdX}
+                y={abdY}
+                width={abdW}
+                height={abdW}
+                preserveAspectRatio="xMidYMin meet"
+              />
             )}
           </>
         )}
 
         {side === "back" && espalda?.imageUrl && (
-          <div
-            className="absolute left-1/2"
-            style={{
-              top: `calc(24% + ${espOffY}%)`,
-              width: `${48 * espScale}%`,
-              transform: `translateX(calc(-50% + ${espOffX}%))`,
-            }}
-          >
-            <img
-              src={espalda.imageUrl}
-              alt=""
-              className="h-auto w-full object-contain"
-              draggable={false}
-            />
-          </div>
+          <image
+            href={espalda.imageUrl}
+            x={espX}
+            y={espY}
+            width={espW}
+            height={espW}
+            preserveAspectRatio="xMidYMin meet"
+          />
         )}
-      </div>
+      </svg>
     </div>
   );
-}
+});

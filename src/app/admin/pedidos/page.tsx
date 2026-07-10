@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ORDER_STATUSES } from "@/lib/utils/constants";
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils/cn";
 import type { Order, OrderItem, OrderStatus } from "@/types/database";
 import type { DesignZoneConfig } from "@/types/design";
 import { TshirtPreviewThumbnail } from "@/components/design/TshirtPreviewThumbnail";
-import { downloadTshirtPreview } from "@/lib/utils/downloadPreview";
+import { downloadSVGAsPNG } from "@/lib/utils/downloadPreview";
 import { Shirt } from "lucide-react";
 
 interface OrderWithItems extends Order {
@@ -317,13 +317,11 @@ function OrderStatusSelector({
 }
 
 function DownloadPreviewButton({
-  zoneConfig,
-  colorHex,
+  svgRef,
   side,
   orderNumber,
 }: {
-  zoneConfig: DesignZoneConfig;
-  colorHex: string;
+  svgRef: React.RefObject<SVGSVGElement | null>;
   side: "front" | "back";
   orderNumber: number;
 }) {
@@ -333,10 +331,10 @@ function DownloadPreviewButton({
 
   async function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
-    if (downloading) return;
+    if (downloading || !svgRef.current) return;
     setDownloading(true);
     try {
-      await downloadTshirtPreview(zoneConfig, colorHex, side, filename);
+      await downloadSVGAsPNG(svgRef.current, filename);
     } catch (err) {
       console.error("Error downloading preview:", err);
     } finally {
@@ -358,6 +356,80 @@ function DownloadPreviewButton({
       )}
       {downloading ? "Generando..." : label}
     </button>
+  );
+}
+
+function TshirtPreviewSection({
+  zones,
+  color,
+  orderNumber,
+}: {
+  zones: Record<string, { imageUrl?: string; enabled?: boolean }>;
+  color: string;
+  orderNumber: number;
+}) {
+  const frontRef = useRef<SVGSVGElement>(null);
+  const backRef = useRef<SVGSVGElement>(null);
+
+  const config = zones as unknown as DesignZoneConfig;
+  const colorHex = COLOR_HEX[color?.toLowerCase() ?? ""] ?? "#1a1a1a";
+  const frontOnly: DesignZoneConfig = {
+    pechoBolsillo: config.pechoBolsillo,
+    abdominalGrande: config.abdominalGrande,
+  };
+  const backOnly: DesignZoneConfig = {
+    espaldaGrande: config.espaldaGrande,
+  };
+  const hasFront = !!(config.pechoBolsillo?.enabled || config.abdominalGrande?.enabled);
+  const hasBack = !!config.espaldaGrande?.enabled;
+
+  return (
+    <div className="rounded-lg border border-elevated bg-surface p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Shirt className="h-4 w-4 text-cyan" />
+        <h3 className="font-heading text-sm font-medium text-cyan">
+          Preview de la camiseta
+        </h3>
+      </div>
+      <div className="flex flex-wrap gap-6">
+        <div className="flex flex-col items-center gap-2">
+          <TshirtPreviewThumbnail
+            ref={frontRef}
+            zoneConfig={hasFront ? frontOnly : { pechoBolsillo: undefined, abdominalGrande: undefined }}
+            colorHex={colorHex}
+            forceSide="front"
+            className="relative aspect-[3/4] h-[200px]"
+          />
+          <span className="text-[10px] font-medium text-text-muted">Frente</span>
+          {!hasFront && (
+            <span className="text-[10px] text-text-muted/60">Sin diseño</span>
+          )}
+          <DownloadPreviewButton
+            svgRef={frontRef}
+            side="front"
+            orderNumber={orderNumber}
+          />
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <TshirtPreviewThumbnail
+            ref={backRef}
+            zoneConfig={hasBack ? backOnly : { espaldaGrande: undefined }}
+            colorHex={colorHex}
+            forceSide="back"
+            className="relative aspect-[3/4] h-[200px]"
+          />
+          <span className="text-[10px] font-medium text-text-muted">Espalda</span>
+          {!hasBack && (
+            <span className="text-[10px] text-text-muted/60">Sin diseño</span>
+          )}
+          <DownloadPreviewButton
+            svgRef={backRef}
+            side="back"
+            orderNumber={orderNumber}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -522,69 +594,13 @@ function OrderDetail({
         )}
 
       {/* ─── Preview de la camiseta ─── */}
-      {snap.zones && (() => {
-        const config = snap.zones as unknown as DesignZoneConfig;
-        const colorHex = COLOR_HEX[snap.color?.toLowerCase() ?? ""] ?? "#1a1a1a";
-        const frontOnly: DesignZoneConfig = {
-          pechoBolsillo: config.pechoBolsillo,
-          abdominalGrande: config.abdominalGrande,
-        };
-        const backOnly: DesignZoneConfig = {
-          espaldaGrande: config.espaldaGrande,
-        };
-        const hasFront = !!(config.pechoBolsillo?.enabled || config.abdominalGrande?.enabled);
-        const hasBack = !!config.espaldaGrande?.enabled;
-        const orderNum = order.order_number;
-
-        return (
-          <div className="rounded-lg border border-elevated bg-surface p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Shirt className="h-4 w-4 text-cyan" />
-              <h3 className="font-heading text-sm font-medium text-cyan">
-                Preview de la camiseta
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-6">
-              <div className="flex flex-col items-center gap-2">
-                <TshirtPreviewThumbnail
-                  zoneConfig={hasFront ? frontOnly : { pechoBolsillo: undefined, abdominalGrande: undefined }}
-                  colorHex={colorHex}
-                  forceSide="front"
-                  className="relative aspect-[3/4] h-[200px]"
-                />
-                <span className="text-[10px] font-medium text-text-muted">Frente</span>
-                {!hasFront && (
-                  <span className="text-[10px] text-text-muted/60">Sin diseño</span>
-                )}
-                <DownloadPreviewButton
-                  zoneConfig={frontOnly}
-                  colorHex={colorHex}
-                  side="front"
-                  orderNumber={orderNum}
-                />
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <TshirtPreviewThumbnail
-                  zoneConfig={hasBack ? backOnly : { espaldaGrande: undefined }}
-                  colorHex={colorHex}
-                  forceSide="back"
-                  className="relative aspect-[3/4] h-[200px]"
-                />
-                <span className="text-[10px] font-medium text-text-muted">Espalda</span>
-                {!hasBack && (
-                  <span className="text-[10px] text-text-muted/60">Sin diseño</span>
-                )}
-                <DownloadPreviewButton
-                  zoneConfig={backOnly}
-                  colorHex={colorHex}
-                  side="back"
-                  orderNumber={orderNum}
-                />
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {snap.zones && (
+        <TshirtPreviewSection
+          zones={snap.zones}
+          color={snap.color ?? ""}
+          orderNumber={order.order_number}
+        />
+      )}
 
       {/* ─── Imágenes originales para estampar ─── */}
       {snap.zones && (
