@@ -18,6 +18,7 @@ import {
   LogIn,
   UserPlus,
 } from "lucide-react";
+import Script from "next/script";
 import { cn } from "@/lib/utils/cn";
 import { formatCOP, getActiveZonesFromConfig, getDesglose, ENVIO } from "@/lib/utils/pricing";
 import { createOrder, saveOrderAssets } from "./actions";
@@ -333,60 +334,59 @@ export default function CheckoutPage() {
         }
       }
 
-      // ── Paso 4: Crear link de pago en Wompi (con timeout 15s) ──
+      // ── Paso 4: Obtener firma de integridad ──
       setProcessingStep("Conectando con Wompi...");
-      console.log("[Checkout] Paso 4: Creando link de pago en Wompi...");
 
       const { reference, amountInCents } = result;
-      const redirectUrl = `${window.location.origin}/checkout/confirmacion`;
 
-      let linkData;
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
+      const sigRes = await fetch("/api/wompi/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference, amountInCents }),
+      });
+      const sigData = await sigRes.json();
 
-        const linkRes = await fetch("/api/wompi/create-link", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: `Pedido ARKE-${result.orderNumber}`,
-            description: `Camiseta personalizada - Pedido #${result.orderNumber}`,
-            amountInCents,
-            reference,
-            redirectUrl,
-          }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeout);
-        linkData = await linkRes.json();
-        console.log("[Checkout] Paso 4 OK: Link de pago:", linkData);
-      } catch (err) {
-        const isTimeout = err instanceof DOMException && err.name === "AbortError";
-        console.error("[Checkout] Paso 4 ERROR:", isTimeout ? "Timeout 15s" : err);
-        setError(
-          isTimeout
-            ? "El servidor de pagos no respondió a tiempo. Tu pedido fue creado, intenta pagar de nuevo."
-            : "Error al conectar con el sistema de pagos. Intenta de nuevo.",
-        );
+      if (!sigData.signature) {
+        setError("Error al generar firma de pago. Intenta de nuevo.");
         setStep(2);
         setLoading(false);
         return;
       }
 
-      if (linkData.error || !linkData.paymentUrl) {
-        console.error("[Checkout] Paso 4 ERROR: Respuesta Wompi:", JSON.stringify(linkData));
-        setError("Error creando el link de pago. Intenta de nuevo.");
-        setStep(2);
-        setLoading(false);
-        return;
-      }
+      // ── Paso 5: Abrir Widget de Wompi ──
+      setProcessingStep("Abriendo pasarela de pago...");
+      setLoading(false);
+      setStep(2);
 
-      // ── Paso 5: Redirigir a Wompi ──
-      setProcessingStep("Redirigiendo a Wompi...");
-      console.log("[Checkout] Paso 5: Redirigiendo a Wompi:", linkData.paymentUrl);
-      clearCart();
-      window.location.href = linkData.paymentUrl;
+      const supabase = createClient();
+      const userEmail = (await supabase.auth.getUser()).data.user?.email ?? "";
+
+      const checkout = new (window as any).WidgetCheckout({
+        currency: "COP",
+        amountInCents,
+        reference,
+        publicKey: process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY,
+        signature: { integrity: sigData.signature },
+        redirectUrl: `${window.location.origin}/pedidos`,
+        customerData: {
+          email: userEmail,
+          fullName: shipping.name,
+          phoneNumber: shipping.whatsapp.replace(/\s/g, ""),
+          phoneNumberPrefix: "+57",
+        },
+        shippingAddress: {
+          addressLine1: `${shipping.address}, Barrio ${shipping.barrio}`,
+          city: "Bogota",
+          phoneNumber: shipping.whatsapp.replace(/\s/g, ""),
+          region: "Cundinamarca",
+          country: "CO",
+        },
+      });
+
+      checkout.open(function (txResult: { transaction: { id: string } }) {
+        clearCart();
+        window.location.href = `/pedidos?transaccion=${txResult.transaction.id}`;
+      });
     } catch (err) {
       console.error("[Checkout] ERROR GENERAL (catch global):", err);
       setError("Error inesperado. Intenta de nuevo.");
@@ -445,6 +445,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+      <Script src="https://checkout.wompi.co/widget.js" strategy="lazyOnload" />
       {/* Hidden TshirtPreviews for mockup capture */}
       <div
         className="pointer-events-none fixed opacity-0"
@@ -734,7 +735,7 @@ export default function CheckoutPage() {
           )}
 
           <p className="text-center font-mono text-[11px] text-text-muted/70">
-            Serás redirigido a la página de pago seguro de Wompi.
+            Se abrirá la pasarela de pago seguro de Wompi.
           </p>
         </div>
       )}
