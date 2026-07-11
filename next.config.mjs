@@ -6,6 +6,15 @@ const nextConfig = {
       { protocol: "https", hostname: "fal.media" },
     ],
   },
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.mjs$/,
+      include: /node_modules[\\/]onnxruntime-web/,
+      type: "javascript/esm",
+      resolve: { fullySpecified: false },
+    });
+    return config;
+  },
 };
 
 export default nextConfig;
