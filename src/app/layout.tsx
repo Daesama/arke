@@ -23,14 +23,59 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://arkei.co"),
   title: {
-    default: "ARKE — Tu Diseño, Tu Estilo",
+    default: "ARKE | Camisetas Personalizadas en Bogotá",
     template: "%s | ARKE",
   },
   description:
-    "Camisetas personalizadas con tu propio diseño. Sube tu imagen, elige tu camiseta y recíbela en tu puerta.",
+    "Diseña tu camiseta personalizada en Bogotá. Sube tu imagen, elige tu talla y material, y recíbela en casa. ARKE — Tu imagen. Tu camisa.",
+  keywords: [
+    "camisetas personalizadas Bogotá",
+    "camisetas personalizadas Colombia",
+    "estampado personalizado Bogotá",
+    "diseña tu camiseta",
+    "ARKE",
+    "arkei",
+    "camisetas gamer Colombia",
+    "camisetas anime Bogotá",
+  ],
+  authors: [{ name: "ARKE", url: "https://arkei.co" }],
+  creator: "ARKE",
   icons: {
     icon: "/brand/favicon.png",
+  },
+  openGraph: {
+    type: "website",
+    locale: "es_CO",
+    url: "https://arkei.co",
+    siteName: "ARKE",
+    title: "ARKE | Camisetas Personalizadas en Bogotá",
+    description:
+      "Diseña tu camiseta personalizada. Sube tu imagen y recíbela en Bogotá.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "ARKE — Camisetas Personalizadas",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ARKE | Camisetas Personalizadas en Bogotá",
+    description:
+      "Diseña tu camiseta personalizada. Sube tu imagen y recíbela en Bogotá.",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  alternates: {
+    canonical: "https://arkei.co",
   },
 };
 
