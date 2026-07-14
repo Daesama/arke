@@ -40,6 +40,7 @@ export const metadata: Metadata = {
     "camisetas gamer Colombia",
     "camisetas anime Bogotá",
     "ropa personalizada Colombia",
+    "camisetas con diseño propio",
   ],
   authors: [{ name: "ARKE", url: "https://arkei.co" }],
   creator: "ARKE",
