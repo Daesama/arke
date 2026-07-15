@@ -53,7 +53,8 @@ function LoginContent() {
 
     setSuccess(true);
     setTimeout(() => {
-      router.push(redirect || "/crear");
+      const safeRedirect = redirect?.startsWith("/") && !redirect.startsWith("//") ? redirect : "/crear";
+      router.push(safeRedirect);
       router.refresh();
     }, 1200);
   }

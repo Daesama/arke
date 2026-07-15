@@ -132,7 +132,8 @@ CREATE TABLE public.orders (
     'wompi_pse',      -- PSE
     'wompi_nequi',    -- Nequi
     'wompi_daviplata',-- Daviplata
-    'cash_on_delivery'-- Contraentrega
+    'cash_on_delivery',-- Contraentrega
+    'admin_gratis'    -- Pedido gratis creado por admin
   )),
   payment_reference TEXT,                 -- ID de transacción Wompi
   payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN (

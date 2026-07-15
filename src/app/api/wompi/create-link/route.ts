@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 const WOMPI_BASE_URL = process.env.WOMPI_SANDBOX === "false"
   ? "https://production.wompi.co/v1"
   : "https://sandbox.wompi.co/v1";
 
 export async function POST(req: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
   try {
     const { name, description, amountInCents, reference, redirectUrl } =
       await req.json();
@@ -43,7 +51,6 @@ export async function POST(req: Request) {
     });
 
     const data = await response.json();
-    console.log("[Wompi] Link response:", JSON.stringify(data));
 
     if (data.data?.id) {
       return NextResponse.json({

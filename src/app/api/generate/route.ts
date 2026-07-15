@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { generateImage } from "@/lib/ai/provider";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
   try {
-    const { prompt, userPrompt, userId } = await req.json();
+    const { prompt, userPrompt } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
@@ -12,17 +20,16 @@ export async function POST(req: Request) {
 
     const result = await generateImage(prompt);
 
-    const supabase = createAdminClient();
+    const supabaseAdmin = createAdminClient();
     const timestamp = Date.now();
-    const folder = userId || "anonymous";
-    const imagePath = `${folder}/${timestamp}.png`;
+    const imagePath = `${user.id}/${timestamp}.png`;
     let storedUrl = result.imageUrl;
 
     if (result.imageUrl.startsWith("data:")) {
       const base64Data = result.imageUrl.split(",")[1];
       const buffer = Buffer.from(base64Data, "base64");
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabaseAdmin.storage
         .from("designs")
         .upload(imagePath, buffer, {
           contentType: "image/png",
@@ -37,7 +44,7 @@ export async function POST(req: Request) {
         );
       }
 
-      const { data: publicUrl } = supabase.storage
+      const { data: publicUrl } = supabaseAdmin.storage
         .from("designs")
         .getPublicUrl(imagePath);
       storedUrl = publicUrl.publicUrl;
@@ -45,10 +52,10 @@ export async function POST(req: Request) {
 
     let designId: string | null = null;
 
-    const { data: designRow, error: insertError } = await supabase
+    const { data: designRow, error: insertError } = await supabaseAdmin
       .from("designs")
       .insert({
-        user_id: userId || null,
+        user_id: user.id,
         prompt: userPrompt || prompt,
         ai_prompt: prompt,
         ai_provider: result.provider,
@@ -75,11 +82,7 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     const err = error as { message?: string; status?: number; code?: string; error?: { code?: string; message?: string } };
-    console.error("=== GENERATE ERROR ===");
-    console.error("Mensaje:", err.message);
-    console.error("Status:", err.status);
-    console.error("Código:", err.code);
-    console.error("Error interno:", err.error?.code, err.error?.message);
+    console.error("Generate error:", err.message);
 
     const isModeration = err.code === "moderation_blocked" ||
       err.error?.code === "moderation_blocked" ||

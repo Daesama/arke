@@ -98,15 +98,6 @@ export default function CheckoutPage() {
       .then(({ data }) => setIsAuthenticated(!!data.user));
   }, []);
 
-  const [isLocalhost, setIsLocalhost] = useState(false);
-  const [testLoading, setTestLoading] = useState(false);
-
-  useEffect(() => {
-    setIsLocalhost(
-      window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1",
-    );
-  }, []);
 
   const subtotal = totalPrice();
   const total = subtotal + ENVIO;
@@ -195,49 +186,6 @@ export default function CheckoutPage() {
     setLoading(false);
     setStep(2);
     setProcessingStep("");
-  }
-
-  async function handleTestOrder() {
-    if (!validateShipping()) return;
-    setTestLoading(true);
-    setError(null);
-
-    try {
-      const cartItems = items.map((item) => ({
-        productId: item.productId,
-        designId: item.designId,
-        designImageUrl: item.designImageUrl,
-        designPrompt: item.designPrompt,
-        genero: item.genero,
-        material: item.material,
-        color: item.color,
-        size: item.size,
-        printPosition: item.printPosition,
-        designConfig: item.designConfig,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-      }));
-
-      const res = await fetch("/api/orders/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shipping, items: cartItems }),
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        alert(`Error creando pedido: ${data.error}`);
-        setTestLoading(false);
-        return;
-      }
-
-      clearCart();
-      window.location.href = "/pedidos";
-    } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
-      setTestLoading(false);
-    }
   }
 
   async function handlePay() {
@@ -722,17 +670,6 @@ export default function CheckoutPage() {
               Pagar con Wompi
             </Button>
           </div>
-
-          {isLocalhost && (
-            <button
-              type="button"
-              onClick={handleTestOrder}
-              disabled={testLoading}
-              className="w-full rounded-lg bg-red-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
-            >
-              {testLoading ? "Creando pedido..." : "TEST — Crear pedido sin pago"}
-            </button>
-          )}
 
           <p className="text-center font-mono text-[11px] text-text-muted/70">
             Se abrirá la pasarela de pago seguro de Wompi.
