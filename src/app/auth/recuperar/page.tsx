@@ -28,7 +28,11 @@ export default function RecuperarPage() {
     );
 
     if (resetError) {
-      setError("No pudimos enviar el email. Intenta de nuevo.");
+      if (resetError.message.includes("rate limit")) {
+        setError("Demasiados intentos. Espera unos minutos e intenta de nuevo.");
+      } else {
+        setError("No pudimos enviar el email. Verifica que el correo sea correcto.");
+      }
       setLoading(false);
       return;
     }

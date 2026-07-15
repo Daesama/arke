@@ -102,15 +102,15 @@ export function ImageUploadZone({
       </div>
 
       {imagePreview && onRemoveBg && (
-        <div className="pl-[52px]">
+        <div className="mt-1">
           {hasBgRemoved ? (
             <button
               type="button"
               onClick={onRestoreBg}
               disabled={isProcessing}
-              className="flex items-center gap-1 text-[10px] text-text-muted transition-colors hover:text-violet"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet/25 bg-violet/5 px-3 py-2 text-xs font-medium text-violet transition-all duration-200 hover:border-violet/40 hover:bg-violet/10"
             >
-              <Undo2 className="h-3 w-3" />
+              <Undo2 className="h-3.5 w-3.5" />
               Restaurar fondo original
             </button>
           ) : (
@@ -119,16 +119,16 @@ export function ImageUploadZone({
               onClick={onRemoveBg}
               disabled={isProcessing || disabled}
               className={cn(
-                "flex items-center gap-1 text-[10px] transition-colors",
+                "flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-200",
                 isProcessing
-                  ? "text-cyan"
-                  : "text-text-muted hover:text-cyan",
+                  ? "border-cyan/30 bg-cyan/5 text-cyan"
+                  : "border-cyan/25 bg-cyan/5 text-cyan hover:border-cyan/40 hover:bg-cyan/10 hover:shadow-[0_0_12px_rgba(0,240,255,0.1)]",
               )}
             >
               {isProcessing ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <span className="inline-block h-3 w-3 text-center leading-3">✂</span>
+                <span className="text-sm leading-none">&#9986;</span>
               )}
               {bgRemovalStatus === "downloading"
                 ? "Descargando modelo..."

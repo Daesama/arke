@@ -340,6 +340,13 @@ export default function CrearPage() {
         </div>
       )}
 
+      {/* Page title */}
+      <div className="border-b border-white/[0.06] bg-deep/40 px-4 py-3 backdrop-blur-sm sm:px-6">
+        <h1 className="text-center font-heading text-lg font-medium text-cyan sm:text-xl">
+          Crea tu camiseta
+        </h1>
+      </div>
+
       {/* Mobile tabs */}
       <div className="flex border-b border-white/[0.06] bg-deep/40 backdrop-blur-sm lg:hidden">
         <button

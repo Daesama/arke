@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Mail } from "lucide-react";
 
 const footerLinks = [
   {
@@ -13,17 +14,16 @@ const footerLinks = [
   {
     title: "Soporte",
     links: [
-      { label: "Preguntas frecuentes", href: "#" },
-      { label: "Contacto", href: "#" },
-      { label: "Envíos", href: "#" },
+      { label: "Preguntas frecuentes", href: "/faq" },
+      { label: "Envíos", href: "/envios" },
+      { label: "Devoluciones", href: "/devoluciones" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Términos", href: "#" },
-      { label: "Privacidad", href: "#" },
-      { label: "Devoluciones", href: "#" },
+      { label: "Términos y condiciones", href: "/terminos" },
+      { label: "Política de privacidad", href: "/privacidad" },
     ],
   },
 ];
@@ -41,11 +41,43 @@ export function Footer() {
               height={28}
             />
             <p className="mt-4 text-sm text-text-muted">
-              Camisetas personalizadas con tu propio diseño. Sube tu imagen y nosotros la estampamos.
+              Camisetas personalizadas con tu propio diseño. Sube tu imagen y
+              nosotros la estampamos.
             </p>
             <p className="mt-2 font-mono text-xs uppercase tracking-widest text-cyan/60">
-              Tu Diseño, Tu Estilo
+              Tu imagen. Tu camisa.
             </p>
+
+            <div className="mt-5 space-y-2.5">
+              <a
+                href="mailto:arke.servicio@gmail.com"
+                className="flex items-center gap-2 text-sm text-text-muted transition-colors hover:text-cyan"
+              >
+                <Mail className="h-4 w-4" />
+                arke.servicio@gmail.com
+              </a>
+              <a
+                href="https://instagram.com/arke_tienda"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-text-muted transition-colors hover:text-cyan"
+              >
+                <svg
+                  className="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                </svg>
+                @arke_tienda
+              </a>
+            </div>
           </div>
 
           {footerLinks.map((group) => (
@@ -71,9 +103,10 @@ export function Footer() {
 
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-elevated pt-8 sm:flex-row">
           <p className="text-xs text-text-muted">
-            &copy; {new Date().getFullYear()} ARKE. Todos los derechos reservados.
+            &copy; {new Date().getFullYear()} ARKE. Todos los derechos
+            reservados.
           </p>
-          <p className="text-xs text-text-muted">Hecho en Colombia 🇨🇴</p>
+          <p className="text-xs text-text-muted">Hecho en Bogotá, Colombia</p>
         </div>
       </div>
     </footer>
