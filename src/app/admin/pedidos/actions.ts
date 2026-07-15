@@ -44,6 +44,7 @@ export async function getAllOrders() {
   const { data: orders, error } = await auth.supabase
     .from("orders")
     .select("*, order_items(*)")
+    .neq("status", "pending")
     .order("created_at", { ascending: false });
 
   if (error) {
