@@ -2,18 +2,18 @@ import type { DesignZone, DesignZoneConfig } from "@/types/design";
 import type { TshirtGenero, TshirtMaterial } from "@/types/database";
 
 const PRECIOS_CAMISETA: Record<TshirtMaterial, Record<TshirtGenero, number>> = {
-  piel_de_durazno: { mujer: 17900, hombre: 19900 },
-  algodon_licrado: { mujer: 18900, hombre: 19900 },
-  seda_fria: { mujer: 21900, hombre: 23900 },
+  piel_de_durazno: { mujer: 21900, hombre: 23900 },
+  algodon_licrado: { mujer: 22900, hombre: 23900 },
+  seda_fria: { mujer: 26900, hombre: 28900 },
 };
 
 const PRECIOS_ESTAMPADO: Record<DesignZone, { label: string; price: number }> = {
-  pechoBolsillo: { label: "Estampado pecho bolsillo", price: 8000 },
-  abdominalGrande: { label: "Estampado pecho grande", price: 14000 },
-  espaldaGrande: { label: "Estampado espalda grande", price: 18000 },
+  pechoBolsillo: { label: "Estampado pecho bolsillo", price: 10000 },
+  abdominalGrande: { label: "Estampado pecho grande", price: 17000 },
+  espaldaGrande: { label: "Estampado espalda grande", price: 21000 },
 };
 
-export const ENVIO = 3000;
+export const ENVIO = 5000;
 
 const MATERIAL_LABELS: Record<TshirtMaterial, string> = {
   piel_de_durazno: "Piel de Durazno",

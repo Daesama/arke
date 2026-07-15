@@ -11,7 +11,8 @@ export type PaymentMethod =
   | "wompi_card"
   | "wompi_pse"
   | "wompi_nequi"
-  | "wompi_daviplata";
+  | "wompi_daviplata"
+  | "admin_gratis";
 
 export type PaymentStatus =
   | "pending"
