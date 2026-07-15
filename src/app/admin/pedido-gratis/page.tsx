@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ImageUploadZone } from "@/components/design/ImageUploadZone";
+import { TshirtPreview } from "@/components/design/TshirtPreview";
 import { Gift, CheckCircle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { createFreeOrder } from "./actions";
@@ -73,9 +74,17 @@ export default function PedidoGratisPage() {
     localidad: "",
     notes: "",
   });
+  const [previewSide, setPreviewSide] = useState<"front" | "back">("front");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<number | null>(null);
+
+  const selectedColor = COLORES.find((c) => c.slug === color)?.value ?? "#1a1a1a";
+  const previewZones = {
+    pechoBolsillo: zones.pechoBolsillo.preview,
+    abdominalGrande: zones.abdominalGrande.preview,
+    espaldaGrande: zones.espaldaGrande.preview,
+  };
 
   function handleFileSelect(zone: DesignZone, file: File) {
     const url = URL.createObjectURL(file);
@@ -209,7 +218,7 @@ export default function PedidoGratisPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Datos de la camiseta */}
         <Card>
           <h2 className="mb-4 font-heading text-lg font-medium text-text-primary">
@@ -332,6 +341,19 @@ export default function PedidoGratisPage() {
               </div>
             </div>
           </div>
+        </Card>
+
+        {/* Preview de la camiseta */}
+        <Card>
+          <h2 className="mb-4 font-heading text-lg font-medium text-text-primary">
+            Preview
+          </h2>
+          <TshirtPreview
+            zones={previewZones}
+            color={selectedColor}
+            side={previewSide}
+            onSideChange={setPreviewSide}
+          />
         </Card>
 
         {/* Datos de envío */}
