@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/utils/rateLimit";
 
 const WOMPI_BASE_URL = process.env.WOMPI_SANDBOX === "false"
   ? "https://production.wompi.co/v1"
   : "https://sandbox.wompi.co/v1";
 
 export async function POST(req: Request) {
+  const rateLimited = await checkRateLimit(req, "wompi-link", 5, 60);
+  if (rateLimited) return rateLimited;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

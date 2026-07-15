@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit } from "@/lib/utils/rateLimit";
 
 const VALID_STATUSES = ["pending", "paid", "in_production", "shipped", "delivered", "cancelled"];
 
 export async function POST(req: Request) {
+  const rateLimited = await checkRateLimit(req, "update-status", 30, 60);
+  if (rateLimited) return rateLimited;
+
   const supabaseAuth = await createClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
 

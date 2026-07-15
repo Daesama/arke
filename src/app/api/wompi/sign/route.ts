@@ -1,8 +1,12 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/utils/rateLimit";
 
 export async function POST(req: Request) {
+  const rateLimited = await checkRateLimit(req, "wompi-sign", 10, 60);
+  if (rateLimited) return rateLimited;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

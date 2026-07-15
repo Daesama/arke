@@ -34,7 +34,7 @@ export async function uploadDesignAndSave(formData: FormData): Promise<{
       console.error("Bucket creation error:", bucketError);
       return { error: `Error creando bucket: ${bucketError.message}` };
     }
-    console.log("Bucket 'designs' creado");
+
   }
 
   const designId = crypto.randomUUID();
@@ -52,7 +52,7 @@ export async function uploadDesignAndSave(formData: FormData): Promise<{
 
     const ext = file.name.split(".").pop() ?? "png";
     const path = `${user.id}/${designId}/${zone}.${ext}`;
-    console.log(`[Upload] ${zone} → ${path} (${file.size} bytes)`);
+
 
     const { error } = await supabase.storage
       .from("designs")
@@ -97,6 +97,6 @@ export async function uploadDesignAndSave(formData: FormData): Promise<{
     return { error: `Error guardando diseño: ${dbError.message}` };
   }
 
-  console.log("[Upload] Diseño guardado:", designId);
+
   return { designId, config, primaryImageUrl };
 }

@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { verifyWompiSignature } from "@/lib/wompi/webhook";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit } from "@/lib/utils/rateLimit";
 
 export async function POST(req: Request) {
+  const rateLimited = await checkRateLimit(req, "wompi-webhook", 30, 60);
+  if (rateLimited) return rateLimited;
   const body = await req.text();
   const signature = req.headers.get("x-event-checksum") ?? "";
   const timestamp = req.headers.get("x-event-timestamp") ?? "";

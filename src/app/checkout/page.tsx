@@ -196,18 +196,18 @@ export default function CheckoutPage() {
     try {
       // ── Paso 1: Maqueta (opcional, no bloquea) ──
       setProcessingStep("Generando maqueta del diseño...");
-      console.log("[Checkout] Paso 1: Generando maqueta...");
+
       let mockups: Array<{ itemId: string; front?: Blob; back?: Blob }> = [];
       try {
         mockups = await captureMockups();
-        console.log("[Checkout] Paso 1 OK: Maquetas capturadas:", mockups.length);
+
       } catch (err) {
         console.error("[Checkout] Paso 1 SKIP: Error capturando maquetas (no bloquea):", err);
       }
 
       // ── Paso 2: Crear pedido en Supabase ──
       setProcessingStep("Creando tu pedido...");
-      console.log("[Checkout] Paso 2: Creando pedido en base de datos...");
+
       const cartItems = items.map((item) => ({
         productId: item.productId,
         designId: item.designId,
@@ -226,7 +226,7 @@ export default function CheckoutPage() {
       let result;
       try {
         result = await createOrder(shipping, cartItems);
-        console.log("[Checkout] Paso 2 OK:", JSON.stringify(result));
+
       } catch (err) {
         console.error("[Checkout] Paso 2 ERROR: Fallo creando pedido:", err);
         setError("Error al crear el pedido. Intenta de nuevo.");
@@ -246,7 +246,7 @@ export default function CheckoutPage() {
       // ── Paso 3: Subir assets (opcional, no bloquea) ──
       if (result.orderId && result.orderNumber) {
         setProcessingStep("Subiendo imagenes del pedido...");
-        console.log("[Checkout] Paso 3: Subiendo imagenes a Supabase...");
+
         try {
           const assetsForm = new FormData();
           assetsForm.set("orderId", result.orderId);
@@ -276,7 +276,7 @@ export default function CheckoutPage() {
           assetsForm.set("items", JSON.stringify(itemsForAssets));
 
           await saveOrderAssets(assetsForm);
-          console.log("[Checkout] Paso 3 OK: Assets guardados.");
+
         } catch (err) {
           console.error("[Checkout] Paso 3 SKIP: Error guardando assets (no bloquea):", err);
         }

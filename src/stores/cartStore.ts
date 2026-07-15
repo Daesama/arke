@@ -39,7 +39,6 @@ export const useCartStore = create<CartState>()(
 
       addItem: (item) => {
         const id = crypto.randomUUID();
-        console.log("[CartStore] Item agregado:", { ...item, id });
         set((state) => ({ items: [...state.items, { ...item, id }] }));
       },
 

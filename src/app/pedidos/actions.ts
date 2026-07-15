@@ -30,11 +30,17 @@ export async function getUserOrders() {
     return { error: "Error al obtener pedidos" };
   }
 
+  interface DesignRef {
+    id: string;
+    image_url: string;
+    thumbnail_url: string | null;
+  }
+
   const designIds = orders?.flatMap((order) =>
-    order.order_items.map((item: any) => item.design_id)
+    order.order_items.map((item: { design_id: string }) => item.design_id)
   ).filter(Boolean);
 
-  let designsMap: Record<string, any> = {};
+  let designsMap: Record<string, DesignRef> = {};
   if (designIds && designIds.length > 0) {
     const { data: designs } = await supabase
       .from("designs")
@@ -45,13 +51,13 @@ export async function getUserOrders() {
       designsMap = designs.reduce((acc, design) => {
         acc[design.id] = design;
         return acc;
-      }, {} as Record<string, any>);
+      }, {} as Record<string, DesignRef>);
     }
   }
 
-  const ordersWithDesigns = orders?.map((order: any) => ({
+  const ordersWithDesigns = orders?.map((order) => ({
     ...order,
-    order_items: order.order_items.map((item: any) => ({
+    order_items: order.order_items.map((item: { design_id: string } & Record<string, unknown>) => ({
       ...item,
       design: designsMap[item.design_id] || null,
     })),

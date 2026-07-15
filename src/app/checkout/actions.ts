@@ -137,7 +137,6 @@ export async function createOrder(
     .update({ payment_reference: reference })
     .eq("id", order.id);
 
-  console.log("Pedido creado:", order.id, "ref:", reference, "monto:", amountInCents);
 
   return { reference, amountInCents, orderId: order.id, orderNumber: order.order_number };
 }
@@ -242,6 +241,5 @@ export async function saveOrderAssets(
     }
   }
 
-  console.log("[SaveAssets] Done:", { folder, mockupUrls, organizedZoneUrls });
   return {};
 }

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { CHAT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/utils/rateLimit";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
@@ -11,6 +12,9 @@ interface IncomingMessage {
 }
 
 export async function POST(req: Request) {
+  const rateLimited = await checkRateLimit(req, "chat", 20, 60);
+  if (rateLimited) return rateLimited;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

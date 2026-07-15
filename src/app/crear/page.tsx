@@ -207,13 +207,7 @@ export default function CrearPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   async function handleAddToCart() {
-    console.log("[Crear] Click agregar al carrito");
-    console.log("[Crear] Config:", { genero, material, color: colorSlug, talla: size });
-    console.log("[Crear] Zonas:", {
-      pechoBolsillo: !!zones.pechoBolsillo.file,
-      abdominalGrande: !!zones.abdominalGrande.file,
-      espaldaGrande: !!zones.espaldaGrande.file,
-    });
+
 
     if (!canAddToCart || isUploading) return;
 
@@ -239,9 +233,9 @@ export default function CrearPage() {
         }
       }
 
-      console.log("[Crear] Enviando al server action...");
+
       const result = await uploadDesignAndSave(formData);
-      console.log("[Crear] Resultado:", result);
+
 
       if (result.error) {
         if (result.error === "Debes iniciar sesión.") {
@@ -283,7 +277,7 @@ export default function CrearPage() {
         unitPrice: subtotal,
       });
 
-      console.log("[Crear] Agregado al carrito");
+
       setAdded(true);
       setTimeout(() => setAdded(false), 3000);
     } catch (err) {
