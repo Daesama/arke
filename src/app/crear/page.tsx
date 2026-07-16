@@ -145,7 +145,45 @@ export default function CrearPage() {
       [zone]: { ...prev[zone], bgRemovalStatus: "processing" as BgRemovalStatus, bgRemovalError: null },
     }));
 
-    const applyResult = (blob: Blob) => {
+    try {
+      // @ts-expect-error -- CDN import bypasses webpack bundling to avoid WASM/import.meta issues
+      const { pipeline, env, RawImage } = await import(/* webpackIgnore: true */ "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3");
+      env.allowLocalModels = false;
+
+      const segmenter = await pipeline("image-segmentation", "briaai/RMBG-1.4", {
+        device: "wasm",
+        dtype: "q8",
+      });
+
+      const imgUrl = URL.createObjectURL(zoneState.file!);
+      const output = await segmenter(imgUrl, { threshold: 0 });
+      URL.revokeObjectURL(imgUrl);
+
+      const img = await RawImage.fromBlob(zoneState.file!);
+      const rawMask = output[0].mask;
+      const mask = (rawMask.width !== img.width || rawMask.height !== img.height)
+        ? rawMask.resize(img.width, img.height)
+        : rawMask;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d")!;
+      const imageData = ctx.createImageData(img.width, img.height);
+
+      for (let i = 0; i < img.width * img.height; i++) {
+        const ch = img.channels;
+        imageData.data[i * 4] = img.data[i * ch];
+        imageData.data[i * 4 + 1] = img.data[i * ch + 1];
+        imageData.data[i * 4 + 2] = img.data[i * ch + 2];
+        imageData.data[i * 4 + 3] = mask.data[i];
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      const blob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob((b) => resolve(b!), "image/png")
+      );
+
       const newFile = new File([blob], zoneState.file!.name.replace(/\.\w+$/, ".png"), { type: "image/png" });
       const newPreview = URL.createObjectURL(blob);
       setZones((prev) => ({
@@ -159,33 +197,14 @@ export default function CrearPage() {
           bgRemovalError: null,
         },
       }));
-    };
-
-    try {
-      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        throw new Error("MOBILE_NOT_SUPPORTED");
-      }
-      const { removeBackground } = await import("@imgly/background-removal");
-      const blob = await removeBackground(zoneState.file, {
-        publicPath: "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/",
-        model: "isnet_quint8",
-        device: "cpu",
-        progress: (key, current, total) => {
-          console.debug(`[remove-bg] ${key}: ${Math.round((current / total) * 100)}%`);
-        },
-      });
-      applyResult(blob);
     } catch (err) {
       console.error("[remove-bg] Error:", err);
-      const isMobile = (err instanceof Error && err.message === "MOBILE_NOT_SUPPORTED");
       setZones((prev) => ({
         ...prev,
         [zone]: {
           ...prev[zone],
           bgRemovalStatus: "error" as BgRemovalStatus,
-          bgRemovalError: isMobile
-            ? "Esta función no está disponible en celulares. Intenta desde un computador."
-            : `Error al quitar el fondo: ${err instanceof Error ? err.message : "error desconocido"}`,
+          bgRemovalError: `Error al quitar el fondo: ${err instanceof Error ? err.message : "error desconocido"}`,
         },
       }));
     }
