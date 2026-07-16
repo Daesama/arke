@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { removeBackground } from "@imgly/background-removal-node";
+import { removeBackground } from "@imgly/background-removal";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/utils/rateLimit";
 
