@@ -151,20 +151,9 @@ export default function CrearPage() {
       [zone]: { ...prev[zone], bgRemovalStatus: "processing" as BgRemovalStatus, bgRemovalError: null },
     }));
 
-    try {
-      const formData = new FormData();
-      formData.append("image", zoneState.file);
-      const res = await fetch("/api/remove-bg", { method: "POST", body: formData });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? "Error al quitar el fondo");
-      }
-
-      const blob = await res.blob();
-      const newFile = new File([blob], zoneState.file.name.replace(/\.\w+$/, ".png"), { type: "image/png" });
+    const applyResult = (blob: Blob) => {
+      const newFile = new File([blob], zoneState.file!.name.replace(/\.\w+$/, ".png"), { type: "image/png" });
       const newPreview = URL.createObjectURL(blob);
-
       setZones((prev) => ({
         ...prev,
         [zone]: {
@@ -176,9 +165,31 @@ export default function CrearPage() {
           bgRemovalError: null,
         },
       }));
-    } catch (err) {
-      console.error("[remove-bg] Error:", err);
-      const message = err instanceof Error ? err.message : "Error desconocido";
+    };
+
+    try {
+      const { removeBackground } = await import("@imgly/background-removal");
+      const blob = await removeBackground(zoneState.file);
+      applyResult(blob);
+      return;
+    } catch (clientErr) {
+      console.warn("[remove-bg] Client-side falló, usando servidor:", clientErr);
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("image", zoneState.file);
+      const res = await fetch("/api/remove-bg", { method: "POST", body: formData });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Error al quitar el fondo");
+      }
+
+      applyResult(await res.blob());
+    } catch (serverErr) {
+      console.error("[remove-bg] Server también falló:", serverErr);
+      const message = serverErr instanceof Error ? serverErr.message : "Error desconocido";
       setZones((prev) => ({
         ...prev,
         [zone]: {
@@ -186,9 +197,7 @@ export default function CrearPage() {
           bgRemovalStatus: "error" as BgRemovalStatus,
           bgRemovalError: message.includes("No autenticado")
             ? "Inicia sesión para quitar el fondo."
-            : message.includes("límite")
-              ? message
-              : "Error al quitar el fondo. Intenta de nuevo.",
+            : "Error al quitar el fondo. Intenta de nuevo.",
         },
       }));
     }
