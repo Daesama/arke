@@ -169,9 +169,7 @@ export default function CrearPage() {
 
     try {
       const { removeBackground } = await import("@imgly/background-removal");
-      const blob = await removeBackground(zoneState.file, {
-        publicPath: "https://unpkg.com/@imgly/background-removal@1.7.0/dist/",
-      });
+      const blob = await removeBackground(zoneState.file);
       applyResult(blob);
     } catch (err) {
       console.error("[remove-bg] Error:", err);
