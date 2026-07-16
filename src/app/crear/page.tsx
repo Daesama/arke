@@ -41,7 +41,7 @@ const ZONES: { key: DesignZone; label: string; description: string; side: "front
   { key: "espaldaGrande", label: "Espalda grande", description: "Grande, centrada en la espalda (~30×35 cm)", side: "back" },
 ];
 
-type BgRemovalStatus = "idle" | "downloading" | "processing" | "done";
+type BgRemovalStatus = "idle" | "processing" | "done" | "error";
 
 interface ZoneState {
   file: File | null;
@@ -49,6 +49,7 @@ interface ZoneState {
   originalFile: File | null;
   originalPreview: string | null;
   bgRemovalStatus: BgRemovalStatus;
+  bgRemovalError: string | null;
 }
 
 type ZonesMap = Record<DesignZone, ZoneState>;
@@ -59,6 +60,7 @@ const emptyZone: ZoneState = {
   originalFile: null,
   originalPreview: null,
   bgRemovalStatus: "idle",
+  bgRemovalError: null,
 };
 
 const emptyZones: ZonesMap = {
@@ -127,7 +129,7 @@ export default function CrearPage() {
       if (prev[zone].originalPreview) URL.revokeObjectURL(prev[zone].originalPreview!);
       return {
         ...prev,
-        [zone]: { file, preview, originalFile: null, originalPreview: null, bgRemovalStatus: "idle" as BgRemovalStatus },
+        [zone]: { file, preview, originalFile: null, originalPreview: null, bgRemovalStatus: "idle" as BgRemovalStatus, bgRemovalError: null },
       };
     });
   }, []);
@@ -146,18 +148,21 @@ export default function CrearPage() {
 
     setZones((prev) => ({
       ...prev,
-      [zone]: { ...prev[zone], bgRemovalStatus: "downloading" as BgRemovalStatus },
+      [zone]: { ...prev[zone], bgRemovalStatus: "processing" as BgRemovalStatus, bgRemovalError: null },
     }));
 
     try {
-      const { removeBackground } = await import("@imgly/background-removal");
+      const formData = new FormData();
+      formData.append("image", zoneState.file);
 
-      setZones((prev) => ({
-        ...prev,
-        [zone]: { ...prev[zone], bgRemovalStatus: "processing" as BgRemovalStatus },
-      }));
+      const res = await fetch("/api/remove-bg", { method: "POST", body: formData });
 
-      const blob = await removeBackground(zoneState.file);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Error del servidor al quitar el fondo");
+      }
+
+      const blob = await res.blob();
       const newFile = new File([blob], zoneState.file.name.replace(/\.\w+$/, ".png"), {
         type: "image/png",
       });
@@ -171,13 +176,21 @@ export default function CrearPage() {
           originalFile: prev[zone].originalFile ?? prev[zone].file,
           originalPreview: prev[zone].originalPreview ?? prev[zone].preview,
           bgRemovalStatus: "done" as BgRemovalStatus,
+          bgRemovalError: null,
         },
       }));
     } catch (err) {
       console.error("Error removing background:", err);
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      const userMessage = message.includes("No autenticado")
+        ? "Inicia sesión para quitar el fondo."
+        : message.includes("límite")
+          ? message
+          : "Error al quitar el fondo. Intenta de nuevo.";
+
       setZones((prev) => ({
         ...prev,
-        [zone]: { ...prev[zone], bgRemovalStatus: "idle" as BgRemovalStatus },
+        [zone]: { ...prev[zone], bgRemovalStatus: "error" as BgRemovalStatus, bgRemovalError: userMessage },
       }));
     }
   }, [zones]);
@@ -195,6 +208,7 @@ export default function CrearPage() {
           originalFile: null,
           originalPreview: null,
           bgRemovalStatus: "idle" as BgRemovalStatus,
+          bgRemovalError: null,
         },
       };
     });
@@ -478,6 +492,7 @@ export default function CrearPage() {
                   onRestoreBg={() => handleRestoreBg(zone.key)}
                   bgRemovalStatus={zones[zone.key].bgRemovalStatus}
                   hasBgRemoved={zones[zone.key].bgRemovalStatus === "done"}
+                  bgRemovalError={zones[zone.key].bgRemovalError}
                 />
               ))}
             </div>

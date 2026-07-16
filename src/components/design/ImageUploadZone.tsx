@@ -13,8 +13,9 @@ interface ImageUploadZoneProps {
   disabled?: boolean;
   onRemoveBg?: () => void;
   onRestoreBg?: () => void;
-  bgRemovalStatus?: "idle" | "downloading" | "processing" | "done";
+  bgRemovalStatus?: "idle" | "processing" | "done" | "error";
   hasBgRemoved?: boolean;
+  bgRemovalError?: string | null;
 }
 
 const ACCEPTED_TYPES = ".jpg,.jpeg,.png,.webp";
@@ -29,6 +30,7 @@ export function ImageUploadZone({
   onRestoreBg,
   bgRemovalStatus = "idle",
   hasBgRemoved = false,
+  bgRemovalError,
 }: ImageUploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -38,7 +40,8 @@ export function ImageUploadZone({
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  const isProcessing = bgRemovalStatus === "downloading" || bgRemovalStatus === "processing";
+  const isProcessing = bgRemovalStatus === "processing";
+  const hasError = bgRemovalStatus === "error";
 
   return (
     <div className="space-y-1">
@@ -102,7 +105,7 @@ export function ImageUploadZone({
       </div>
 
       {imagePreview && onRemoveBg && (
-        <div className="mt-1">
+        <div className="mt-1 space-y-1">
           {hasBgRemoved ? (
             <button
               type="button"
@@ -120,9 +123,11 @@ export function ImageUploadZone({
               disabled={isProcessing || disabled}
               className={cn(
                 "flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-200",
-                isProcessing
-                  ? "border-cyan/30 bg-cyan/5 text-cyan"
-                  : "border-cyan/25 bg-cyan/5 text-cyan hover:border-cyan/40 hover:bg-cyan/10 hover:shadow-[0_0_12px_rgba(0,240,255,0.1)]",
+                hasError
+                  ? "border-magenta/30 bg-magenta/5 text-magenta"
+                  : isProcessing
+                    ? "border-cyan/30 bg-cyan/5 text-cyan"
+                    : "border-cyan/25 bg-cyan/5 text-cyan hover:border-cyan/40 hover:bg-cyan/10 hover:shadow-[0_0_12px_rgba(0,240,255,0.1)]",
               )}
             >
               {isProcessing ? (
@@ -130,12 +135,15 @@ export function ImageUploadZone({
               ) : (
                 <span className="text-sm leading-none">&#9986;</span>
               )}
-              {bgRemovalStatus === "downloading"
-                ? "Descargando modelo..."
-                : bgRemovalStatus === "processing"
-                  ? "Quitando fondo..."
+              {isProcessing
+                ? "Quitando fondo..."
+                : hasError
+                  ? "Reintentar quitar fondo"
                   : "Quitar fondo"}
             </button>
+          )}
+          {hasError && bgRemovalError && (
+            <p className="px-1 text-[10px] text-magenta/80">{bgRemovalError}</p>
           )}
         </div>
       )}
