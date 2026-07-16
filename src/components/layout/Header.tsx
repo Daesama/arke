@@ -12,6 +12,7 @@ import {
   User,
   Package,
   ChevronDown,
+  MessageSquareMore,
 } from "lucide-react";
 import { NAV_LINKS } from "@/lib/utils/constants";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils/cn";
 import { useCartStore } from "@/stores/cartStore";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { FeedbackModal } from "./FeedbackModal";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -26,6 +28,7 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -165,6 +168,16 @@ export function Header() {
             </div>
           )}
 
+          <button
+            type="button"
+            onClick={() => setFeedbackOpen(true)}
+            className="hidden rounded-xl p-2.5 text-text-secondary transition-all duration-200 hover:bg-violet/10 hover:text-violet sm:block"
+            aria-label="Sugerencias y reportes"
+            title="Sugerencias"
+          >
+            <MessageSquareMore className="h-5 w-5" />
+          </button>
+
           <Link
             href="/carrito"
             className="relative rounded-xl p-2.5 text-text-secondary transition-all duration-200 hover:bg-surface/50 hover:text-text-primary"
@@ -256,6 +269,18 @@ export function Header() {
             </div>
           )}
 
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setFeedbackOpen(true);
+            }}
+            className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-violet transition-colors hover:bg-violet/5"
+          >
+            <MessageSquareMore className="h-4 w-4" />
+            Sugerencias
+          </button>
+
           <Link href="/crear" onClick={() => setMobileMenuOpen(false)}>
             <Button size="sm" className="mt-3 w-full">
               Crear diseño
@@ -263,6 +288,8 @@ export function Header() {
           </Link>
         </nav>
       </div>
+
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </header>
   );
 }

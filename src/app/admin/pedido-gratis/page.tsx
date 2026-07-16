@@ -9,7 +9,7 @@ import { TshirtPreview } from "@/components/design/TshirtPreview";
 import { Gift, CheckCircle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { createFreeOrder } from "./actions";
-import type { DesignZone } from "@/types/design";
+import type { DesignZone, ZoneTransform } from "@/types/design";
 import type { TshirtGenero, TshirtMaterial } from "@/types/database";
 
 const MATERIALES: { value: TshirtMaterial; label: string }[] = [
@@ -82,6 +82,8 @@ export default function PedidoGratisPage() {
     notes: "",
   });
   const [previewSide, setPreviewSide] = useState<"front" | "back">("front");
+  const [abdominalTransform, setAbdominalTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
+  const [espaldaTransform, setEspaldaTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<number | null>(null);
@@ -464,6 +466,10 @@ export default function PedidoGratisPage() {
             color={selectedColor}
             side={previewSide}
             onSideChange={setPreviewSide}
+            abdominalTransform={abdominalTransform}
+            onAbdominalTransformChange={setAbdominalTransform}
+            espaldaTransform={espaldaTransform}
+            onEspaldaTransformChange={setEspaldaTransform}
           />
         </Card>
 
