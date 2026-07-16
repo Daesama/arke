@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { removeBackground } from "@imgly/background-removal-node";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/utils/rateLimit";
 
-export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
@@ -15,6 +13,11 @@ export async function POST(req: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const falKey = process.env.FAL_KEY;
+  if (!falKey) {
+    return NextResponse.json({ error: "Servicio no configurado" }, { status: 503 });
   }
 
   try {
@@ -33,9 +36,54 @@ export async function POST(req: Request) {
       );
     }
 
-    const blob = new Blob([await file.arrayBuffer()], { type: file.type || "image/png" });
-    const resultBlob = await removeBackground(blob);
-    const resultBuffer = Buffer.from(await resultBlob.arrayBuffer());
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const mimeType = file.type || "image/png";
+    const dataUri = `data:${mimeType};base64,${base64}`;
+
+    const falResponse = await fetch("https://queue.fal.run/fal-ai/birefnet", {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image_url: dataUri,
+        model: "General Use (Light)",
+        operating_resolution: "1024x1024",
+        output_format: "png",
+      }),
+    });
+
+    if (!falResponse.ok) {
+      const errText = await falResponse.text().catch(() => "");
+      console.error("[remove-bg] fal.ai error:", falResponse.status, errText);
+      return NextResponse.json(
+        { error: "Error al procesar la imagen. Intenta de nuevo." },
+        { status: 502 },
+      );
+    }
+
+    const data = await falResponse.json();
+    const imageUrl = data.image?.url;
+
+    if (!imageUrl) {
+      console.error("[remove-bg] No image in fal.ai response:", data);
+      return NextResponse.json(
+        { error: "No se pudo procesar la imagen." },
+        { status: 502 },
+      );
+    }
+
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      return NextResponse.json(
+        { error: "Error al descargar la imagen procesada." },
+        { status: 502 },
+      );
+    }
+
+    const resultBuffer = Buffer.from(await imageResponse.arrayBuffer());
 
     return new NextResponse(resultBuffer, {
       status: 200,
@@ -47,7 +95,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("[remove-bg] Error:", err);
     return NextResponse.json(
-      { error: "Error al procesar la imagen. Intenta con otra imagen." },
+      { error: "Error al procesar la imagen. Intenta de nuevo." },
       { status: 500 },
     );
   }
