@@ -171,33 +171,16 @@ export default function CrearPage() {
       const { removeBackground } = await import("@imgly/background-removal");
       const blob = await removeBackground(zoneState.file);
       applyResult(blob);
-      return;
-    } catch (clientErr) {
-      console.warn("[remove-bg] Client-side falló, usando servidor:", clientErr);
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append("image", zoneState.file);
-      const res = await fetch("/api/remove-bg", { method: "POST", body: formData });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? "Error al quitar el fondo");
-      }
-
-      applyResult(await res.blob());
-    } catch (serverErr) {
-      console.error("[remove-bg] Server también falló:", serverErr);
-      const message = serverErr instanceof Error ? serverErr.message : "Error desconocido";
+    } catch (err) {
+      console.error("[remove-bg] Error:", err);
       setZones((prev) => ({
         ...prev,
         [zone]: {
           ...prev[zone],
           bgRemovalStatus: "error" as BgRemovalStatus,
-          bgRemovalError: message.includes("No autenticado")
-            ? "Inicia sesión para quitar el fondo."
-            : "Error al quitar el fondo. Intenta de nuevo.",
+          bgRemovalError: /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+            ? "Esta función no está disponible en celulares. Intenta desde un computador."
+            : "Error al quitar el fondo. Intenta de nuevo con otra imagen.",
         },
       }));
     }
