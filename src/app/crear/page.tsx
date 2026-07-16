@@ -8,7 +8,6 @@ import { GenderSelector } from "@/components/design/GenderSelector";
 import { MaterialSelector } from "@/components/design/MaterialSelector";
 import { Button } from "@/components/ui/Button";
 import { ShoppingCart, Settings2, Eye, LogIn } from "lucide-react";
-import { ColorPicker } from "@/components/design/ColorPicker";
 import { getDesglose, calcularSubtotal, formatCOP } from "@/lib/utils/pricing";
 import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils/cn";
@@ -95,11 +94,7 @@ function fileToBase64Thumbnail(file: File, maxSize = 200): Promise<string> {
 export default function CrearPage() {
   const [genero, setGenero] = useState<TshirtGenero | null>(null);
   const [material, setMaterial] = useState<TshirtMaterial | null>(null);
-  const [selectedPreset, setSelectedPreset] = useState<ColorOption | null>(PRESET_COLORS[0]);
-  const [customColor, setCustomColor] = useState("#8B5CF6");
-  const colorHex = selectedPreset?.value ?? customColor;
-  const colorName = selectedPreset?.name ?? customColor.toUpperCase();
-  const colorSlug: TshirtColor = selectedPreset?.slug ?? customColor;
+  const [selectedColor, setSelectedColor] = useState<ColorOption>(PRESET_COLORS[0]);
   const [size, setSize] = useState<TshirtSize | null>(null);
   const [side, setSide] = useState<"front" | "back">("front");
   const [zones, setZones] = useState<ZonesMap>({ ...emptyZones });
@@ -112,8 +107,7 @@ export default function CrearPage() {
   const addItem = useCartStore((s) => s.addItem);
 
   const hasAnyImage = zones.pechoBolsillo.file || zones.abdominalGrande.file || zones.espaldaGrande.file;
-  const hasColor = selectedPreset !== null || customColor !== "#8B5CF6";
-  const canAddToCart = !!genero && !!material && hasColor && !!size && !!hasAnyImage;
+  const canAddToCart = !!genero && !!material && !!size && !!hasAnyImage;
 
   const activeZones: DesignZone[] = [];
   if (zones.pechoBolsillo.file) activeZones.push("pechoBolsillo");
@@ -168,19 +162,30 @@ export default function CrearPage() {
     };
 
     try {
+      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        throw new Error("MOBILE_NOT_SUPPORTED");
+      }
       const { removeBackground } = await import("@imgly/background-removal");
-      const blob = await removeBackground(zoneState.file);
+      const blob = await removeBackground(zoneState.file, {
+        publicPath: "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/",
+        model: "isnet_quint8",
+        device: "cpu",
+        progress: (key, current, total) => {
+          console.debug(`[remove-bg] ${key}: ${Math.round((current / total) * 100)}%`);
+        },
+      });
       applyResult(blob);
     } catch (err) {
       console.error("[remove-bg] Error:", err);
+      const isMobile = (err instanceof Error && err.message === "MOBILE_NOT_SUPPORTED");
       setZones((prev) => ({
         ...prev,
         [zone]: {
           ...prev[zone],
           bgRemovalStatus: "error" as BgRemovalStatus,
-          bgRemovalError: /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+          bgRemovalError: isMobile
             ? "Esta función no está disponible en celulares. Intenta desde un computador."
-            : "Error al quitar el fondo. Intenta de nuevo con otra imagen.",
+            : `Error al quitar el fondo: ${err instanceof Error ? err.message : "error desconocido"}`,
         },
       }));
     }
@@ -223,7 +228,7 @@ export default function CrearPage() {
       const formData = new FormData();
       formData.set("genero", genero!);
       formData.set("material", material!);
-      formData.set("color", colorSlug);
+      formData.set("color", selectedColor.slug);
       formData.set("talla", size!);
 
       for (const zone of ZONES) {
@@ -273,7 +278,7 @@ export default function CrearPage() {
         designPrompt: "",
         genero: genero!,
         material: material!,
-        color: colorSlug,
+        color: selectedColor.slug,
         size: size!,
         printPosition: "pecho",
         designConfig: result.config as DesignZoneConfig,
@@ -403,10 +408,10 @@ export default function CrearPage() {
                     <button
                       key={c.slug}
                       type="button"
-                      onClick={() => setSelectedPreset(c)}
+                      onClick={() => setSelectedColor(c)}
                       className={cn(
                         "h-7 w-7 rounded-full border-2 transition-all duration-200",
-                        selectedPreset?.slug === c.slug
+                        selectedColor.slug === c.slug
                           ? "border-cyan shadow-glow-cyan scale-110"
                           : "border-elevated hover:border-text-muted hover:scale-105",
                       )}
@@ -415,24 +420,6 @@ export default function CrearPage() {
                       title={c.name}
                     />
                   ))}
-
-                  {!selectedPreset && (
-                    <button
-                      type="button"
-                      className="h-7 w-7 rounded-full border-2 border-cyan shadow-glow-cyan scale-110 transition-all duration-200"
-                      style={{ backgroundColor: customColor }}
-                      aria-label="Color personalizado seleccionado"
-                      title={customColor}
-                    />
-                  )}
-
-                  <ColorPicker
-                    value={customColor}
-                    onChange={(hex) => {
-                      setCustomColor(hex);
-                      setSelectedPreset(null);
-                    }}
-                  />
                 </div>
 
                 <div className="flex shrink-0 overflow-hidden rounded-xl border border-elevated/60 bg-deep/50">
@@ -547,7 +534,7 @@ export default function CrearPage() {
             <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
               <p className="text-sm font-medium text-text-primary font-heading">Preview</p>
               <p className="font-mono text-[11px] text-text-muted">
-                {size ?? "—"} / {colorName}
+                {size ?? "—"} / {selectedColor.name}
                 {genero ? ` / ${genero === "mujer" ? "Mujer" : "Hombre"}` : ""}
               </p>
             </div>
@@ -559,7 +546,7 @@ export default function CrearPage() {
                   abdominalGrande: zones.abdominalGrande.preview,
                   espaldaGrande: zones.espaldaGrande.preview,
                 }}
-                color={colorHex}
+                color={selectedColor.value}
                 side={side}
                 onSideChange={handleSideChange}
                 abdominalTransform={abdominalTransform}
