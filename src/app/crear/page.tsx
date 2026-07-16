@@ -142,22 +142,6 @@ export default function CrearPage() {
     });
   }, []);
 
-  const applyBgResult = useCallback((zone: DesignZone, blob: Blob, originalName: string) => {
-    const newFile = new File([blob], originalName.replace(/\.\w+$/, ".png"), { type: "image/png" });
-    const newPreview = URL.createObjectURL(blob);
-    setZones((prev) => ({
-      ...prev,
-      [zone]: {
-        file: newFile,
-        preview: newPreview,
-        originalFile: prev[zone].originalFile ?? prev[zone].file,
-        originalPreview: prev[zone].originalPreview ?? prev[zone].preview,
-        bgRemovalStatus: "done" as BgRemovalStatus,
-        bgRemovalError: null,
-      },
-    }));
-  }, []);
-
   const handleRemoveBg = useCallback(async (zone: DesignZone) => {
     const zoneState = zones[zone];
     if (!zoneState.file) return;
@@ -174,35 +158,41 @@ export default function CrearPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error ?? "Error del servidor");
+        throw new Error(data?.error ?? "Error al quitar el fondo");
       }
 
       const blob = await res.blob();
-      applyBgResult(zone, blob, zoneState.file.name);
-      return;
-    } catch (serverErr) {
-      console.warn("[remove-bg] Server failed, trying client-side:", serverErr);
-    }
+      const newFile = new File([blob], zoneState.file.name.replace(/\.\w+$/, ".png"), { type: "image/png" });
+      const newPreview = URL.createObjectURL(blob);
 
-    try {
-      const { removeBackground } = await import("@imgly/background-removal");
-      const blob = await removeBackground(zoneState.file);
-      applyBgResult(zone, blob, zoneState.file.name);
-    } catch (clientErr) {
-      console.error("[remove-bg] Client fallback also failed:", clientErr);
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      setZones((prev) => ({
+        ...prev,
+        [zone]: {
+          file: newFile,
+          preview: newPreview,
+          originalFile: prev[zone].originalFile ?? prev[zone].file,
+          originalPreview: prev[zone].originalPreview ?? prev[zone].preview,
+          bgRemovalStatus: "done" as BgRemovalStatus,
+          bgRemovalError: null,
+        },
+      }));
+    } catch (err) {
+      console.error("[remove-bg] Error:", err);
+      const message = err instanceof Error ? err.message : "Error desconocido";
       setZones((prev) => ({
         ...prev,
         [zone]: {
           ...prev[zone],
           bgRemovalStatus: "error" as BgRemovalStatus,
-          bgRemovalError: isMobile
-            ? "No se pudo quitar el fondo. Intenta desde un computador o con una imagen más pequeña."
-            : "Error al quitar el fondo. Intenta de nuevo con otra imagen.",
+          bgRemovalError: message.includes("No autenticado")
+            ? "Inicia sesión para quitar el fondo."
+            : message.includes("límite")
+              ? message
+              : "Error al quitar el fondo. Intenta de nuevo.",
         },
       }));
     }
-  }, [zones, applyBgResult]);
+  }, [zones]);
 
   const handleRestoreBg = useCallback((zone: DesignZone) => {
     setZones((prev) => {

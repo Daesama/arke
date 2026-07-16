@@ -33,8 +33,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const uint8 = new Uint8Array(await file.arrayBuffer());
-    const resultBlob = await removeBackground(uint8);
+    const blob = new Blob([await file.arrayBuffer()], { type: file.type || "image/png" });
+    const resultBlob = await removeBackground(blob);
     const resultBuffer = Buffer.from(await resultBlob.arrayBuffer());
 
     return new NextResponse(resultBuffer, {
