@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { removeBackground } from "@imgly/background-removal";
+import { removeBackground } from "@imgly/background-removal-node";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/utils/rateLimit";
 
@@ -33,11 +33,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: file.type || "image/png" });
-
-    const resultBlob = await removeBackground(blob);
-
+    const uint8 = new Uint8Array(await file.arrayBuffer());
+    const resultBlob = await removeBackground(uint8);
     const resultBuffer = Buffer.from(await resultBlob.arrayBuffer());
 
     return new NextResponse(resultBuffer, {
