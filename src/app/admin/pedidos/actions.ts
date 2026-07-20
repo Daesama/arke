@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Order, OrderItem, OrderStatus } from "@/types/database";
 
 const VALID_TRANSITIONS: OrderStatus[] = [
+  "cancelled",
   "paid",
   "in_production",
   "shipped",

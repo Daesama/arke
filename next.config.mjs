@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverActions: {
+      // Server Actions default to a 1MB body limit. Zone uploads (up to 3
+      // files per request) are allowed up to 10MB each at the Supabase
+      // Storage bucket level, so the combined request needs headroom above
+      // that or uploads silently hang instead of erroring.
+      bodySizeLimit: "35mb",
+    },
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "*.supabase.co" },

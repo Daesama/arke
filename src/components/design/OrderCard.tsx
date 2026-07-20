@@ -1,6 +1,6 @@
 "use client";
 
-import { Package, Calendar, MapPin, CreditCard, Check } from "lucide-react";
+import { Package, Calendar, MapPin, CreditCard, Check, XCircle } from "lucide-react";
 import { TSHIRT_COLORS } from "@/lib/utils/constants";
 import type { Order, OrderItem, OrderStatus } from "@/types/database";
 import type { DesignZoneConfig } from "@/types/design";
@@ -202,6 +202,14 @@ export function OrderCard({ order }: OrderCardProps) {
           </div>
         ))}
       </div>
+
+      {/* Cancelled notice */}
+      {order.status === "cancelled" && (
+        <div className="mt-6 flex items-center gap-2 rounded-lg border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-400">
+          <XCircle className="h-4 w-4 flex-shrink-0" />
+          Este pedido fue cancelado.
+        </div>
+      )}
 
       {/* Progress Bar */}
       {PROGRESS_STEPS.some((s) => s.key === order.status) && (

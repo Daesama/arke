@@ -217,6 +217,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 const STATUS_FLOW: { key: OrderStatus; label: string }[] = [
+  { key: "cancelled", label: "Cancelado" },
   { key: "paid", label: "Pagado" },
   { key: "in_production", label: "En producción" },
   { key: "shipped", label: "Enviado" },
@@ -260,8 +261,11 @@ function OrderStatusSelector({
       </div>
       <div className="flex items-center gap-1">
         {STATUS_FLOW.map((step, idx) => {
+          const isCancelStep = step.key === "cancelled";
           const isCurrent = step.key === order.status;
-          const isPast = currentIdx >= 0 && idx < currentIdx;
+          // "Cancelado" is an exception state, not a completed step in the
+          // happy path — never show it with the green "done" treatment.
+          const isPast = !isCancelStep && currentIdx >= 0 && idx < currentIdx;
           const isClickable =
             !updating && (idx === currentIdx - 1 || idx === currentIdx + 1);
 
@@ -281,7 +285,9 @@ function OrderStatusSelector({
                 onClick={() => handleClick(idx)}
                 className={cn(
                   "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all",
-                  isCurrent &&
+                  isCurrent && isCancelStep &&
+                    "border-magenta bg-magenta/10 text-magenta shadow-[0_0_8px_rgba(255,45,149,0.15)]",
+                  isCurrent && !isCancelStep &&
                     "border-cyan bg-cyan/10 text-cyan shadow-[0_0_8px_rgba(0,240,255,0.15)]",
                   isPast &&
                     "border-green-400/30 bg-green-400/10 text-green-400",
@@ -297,8 +303,18 @@ function OrderStatusSelector({
                 {isPast && <Check className="h-3 w-3" />}
                 {isCurrent && (
                   <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan opacity-50" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan" />
+                    <span
+                      className={cn(
+                        "absolute inline-flex h-full w-full animate-ping rounded-full opacity-50",
+                        isCancelStep ? "bg-magenta" : "bg-cyan",
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "relative inline-flex h-2 w-2 rounded-full",
+                        isCancelStep ? "bg-magenta" : "bg-cyan",
+                      )}
+                    />
                   </span>
                 )}
                 {step.label}

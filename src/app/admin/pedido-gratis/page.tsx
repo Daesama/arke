@@ -160,8 +160,23 @@ export default function PedidoGratisPage() {
       }
 
       ctx.putImageData(imageData, 0, 0);
+
+      // Cap output resolution — an uncompressed alpha PNG at full phone-camera
+      // resolution can hit tens of MB and blow past upload limits. 3000px is
+      // still well above what's needed for a ~35cm print at print quality.
+      const MAX_DIM = 3000;
+      let outputCanvas: HTMLCanvasElement = canvas;
+      if (canvas.width > MAX_DIM || canvas.height > MAX_DIM) {
+        const scale = MAX_DIM / Math.max(canvas.width, canvas.height);
+        const resized = document.createElement("canvas");
+        resized.width = Math.round(canvas.width * scale);
+        resized.height = Math.round(canvas.height * scale);
+        resized.getContext("2d")!.drawImage(canvas, 0, 0, resized.width, resized.height);
+        outputCanvas = resized;
+      }
+
       const blob = await new Promise<Blob>((resolve) =>
-        canvas.toBlob((b) => resolve(b!), "image/png")
+        outputCanvas.toBlob((b) => resolve(b!), "image/png")
       );
 
       const newFile = new File([blob], zoneState.file!.name.replace(/\.\w+$/, ".png"), { type: "image/png" });
