@@ -417,6 +417,9 @@ export default function CheckoutPage() {
                     color={item.color}
                     side="front"
                     onSideChange={() => {}}
+                    pechoTransform={
+                      item.designConfig?.pechoBolsillo?.transform
+                    }
                     abdominalTransform={
                       item.designConfig?.abdominalGrande?.transform
                     }

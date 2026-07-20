@@ -76,7 +76,12 @@ export async function createFreeOrder(formData: FormData): Promise<{
       .from("designs")
       .getPublicUrl(path);
 
-    config[zone] = { imageUrl: urlData.publicUrl, enabled: true };
+    const transformRaw = formData.get(`transform_${zone}`) as string | null;
+    config[zone] = {
+      imageUrl: urlData.publicUrl,
+      enabled: true,
+      ...(transformRaw ? { transform: JSON.parse(transformRaw) } : {}),
+    };
     if (!primaryImageUrl) primaryImageUrl = urlData.publicUrl;
   }
 

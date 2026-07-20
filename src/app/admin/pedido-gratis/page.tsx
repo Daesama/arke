@@ -82,6 +82,7 @@ export default function PedidoGratisPage() {
     notes: "",
   });
   const [previewSide, setPreviewSide] = useState<"front" | "back">("front");
+  const [pechoTransform, setPechoTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [abdominalTransform, setAbdominalTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [espaldaTransform, setEspaldaTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [loading, setLoading] = useState(false);
@@ -248,8 +249,16 @@ export default function PedidoGratisPage() {
 
     for (const zone of ZONES) {
       const zoneState = zones[zone.key];
-      if (zoneState.file) {
-        formData.set(`zone_${zone.key}`, zoneState.file);
+      if (!zoneState.file) continue;
+      formData.set(`zone_${zone.key}`, zoneState.file);
+      if (zone.key === "pechoBolsillo") {
+        formData.set(`transform_${zone.key}`, JSON.stringify(pechoTransform));
+      }
+      if (zone.key === "abdominalGrande") {
+        formData.set(`transform_${zone.key}`, JSON.stringify(abdominalTransform));
+      }
+      if (zone.key === "espaldaGrande") {
+        formData.set(`transform_${zone.key}`, JSON.stringify(espaldaTransform));
       }
     }
 
@@ -481,6 +490,8 @@ export default function PedidoGratisPage() {
             color={selectedColor}
             side={previewSide}
             onSideChange={setPreviewSide}
+            pechoTransform={pechoTransform}
+            onPechoTransformChange={setPechoTransform}
             abdominalTransform={abdominalTransform}
             onAbdominalTransformChange={setAbdominalTransform}
             espaldaTransform={espaldaTransform}

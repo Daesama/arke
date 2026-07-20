@@ -16,6 +16,8 @@ interface TshirtPreviewProps {
   color: string;
   side: "front" | "back";
   onSideChange: (side: "front" | "back") => void;
+  pechoTransform?: ZoneTransform;
+  onPechoTransformChange?: (transform: ZoneTransform) => void;
   abdominalTransform?: ZoneTransform;
   onAbdominalTransformChange?: (transform: ZoneTransform) => void;
   espaldaTransform?: ZoneTransform;
@@ -28,7 +30,7 @@ const SCALE_MIN = 0.4;
 const SCALE_MAX = 1.6;
 const SCALE_STEP = 0.05;
 
-type DragZone = "abdominal" | "espalda" | null;
+type DragZone = "pecho" | "abdominal" | "espalda" | null;
 
 function adjustColor(hex: string, amount: number): string {
   const n = parseInt(hex.replace("#", "").slice(0, 6), 16) || 0;
@@ -43,6 +45,8 @@ export function TshirtPreview({
   color,
   side,
   onSideChange,
+  pechoTransform,
+  onPechoTransformChange,
   abdominalTransform,
   onAbdominalTransformChange,
   espaldaTransform,
@@ -52,6 +56,7 @@ export function TshirtPreview({
   const hasAnyFrontImage = zones.pechoBolsillo || zones.abdominalGrande;
   const hasBackImage = !!zones.espaldaGrande;
 
+  const pechoT = pechoTransform ?? DEFAULT_TRANSFORM;
   const abdT = abdominalTransform ?? DEFAULT_TRANSFORM;
   const espT = espaldaTransform ?? DEFAULT_TRANSFORM;
 
@@ -61,10 +66,11 @@ export function TshirtPreview({
   const [draggingZone, setDraggingZone] = useState<DragZone>(null);
 
   const getHandler = useCallback((zone: DragZone) => {
+    if (zone === "pecho") return { transform: pechoT, onChange: onPechoTransformChange };
     if (zone === "abdominal") return { transform: abdT, onChange: onAbdominalTransformChange };
     if (zone === "espalda") return { transform: espT, onChange: onEspaldaTransformChange };
     return null;
-  }, [abdT, espT, onAbdominalTransformChange, onEspaldaTransformChange]);
+  }, [pechoT, abdT, espT, onPechoTransformChange, onAbdominalTransformChange, onEspaldaTransformChange]);
 
   const handlePointerDown = useCallback(
     (zone: DragZone, e: React.PointerEvent) => {
@@ -127,12 +133,14 @@ export function TshirtPreview({
     [side, zones, onAbdominalTransformChange, onEspaldaTransformChange, handleScale],
   );
 
-  const activeTransform = side === "front" ? abdT : espT;
-  const activeOnChange = side === "front" ? onAbdominalTransformChange : onEspaldaTransformChange;
-  const activeZoneName: DragZone = side === "front" ? "abdominal" : "espalda";
-  const showScaleControls =
-    (side === "front" && zones.abdominalGrande && onAbdominalTransformChange) ||
-    (side === "back" && zones.espaldaGrande && onEspaldaTransformChange);
+  const showPechoScale = side === "front" && !!zones.pechoBolsillo && !!onPechoTransformChange;
+  const showAbdominalScale = side === "front" && !!zones.abdominalGrande && !!onAbdominalTransformChange;
+  const showEspaldaScale = side === "back" && !!zones.espaldaGrande && !!onEspaldaTransformChange;
+
+  const scaleControls: { key: "pecho" | "abdominal" | "espalda"; label: string; transform: ZoneTransform; onChange: (t: ZoneTransform) => void }[] = [];
+  if (showPechoScale) scaleControls.push({ key: "pecho", label: "Pecho bolsillo", transform: pechoT, onChange: onPechoTransformChange! });
+  if (showAbdominalScale) scaleControls.push({ key: "abdominal", label: "Pecho grande", transform: abdT, onChange: onAbdominalTransformChange! });
+  if (showEspaldaScale) scaleControls.push({ key: "espalda", label: "Espalda grande", transform: espT, onChange: onEspaldaTransformChange! });
 
   const shadow = adjustColor(color, -30);
   const highlight = adjustColor(color, 12);
@@ -273,12 +281,30 @@ export function TshirtPreview({
         {side === "front" && (
           <>
             {zones.pechoBolsillo && (
-              <div className="absolute top-[24%] left-[27%] w-[15%] transition-all duration-300">
+              <div
+                className={cn(
+                  "absolute select-none",
+                  draggingZone === "pecho" ? "cursor-grabbing" : "cursor-grab",
+                  draggingZone !== "pecho" && "transition-all duration-150",
+                )}
+                style={{
+                  top: `calc(24% + ${pechoT.offsetY}%)`,
+                  left: `calc(27% + ${pechoT.offsetX}%)`,
+                  width: `${15 * pechoT.scale}%`,
+                }}
+                onPointerDown={(e) => handlePointerDown("pecho", e)}
+              >
                 <img
                   src={zones.pechoBolsillo}
                   alt="Pecho bolsillo"
-                  className="h-auto w-full object-contain drop-shadow-lg"
+                  className="pointer-events-none h-auto w-full object-contain drop-shadow-lg"
+                  draggable={false}
                 />
+                {onPechoTransformChange && !captureMode && (
+                  <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan/80 text-void shadow-md">
+                    <Move className="h-3 w-3" />
+                  </div>
+                )}
               </div>
             )}
             {zones.abdominalGrande && (
@@ -352,41 +378,47 @@ export function TshirtPreview({
         )}
       </div>
 
-      {/* Scale controls */}
-      {showScaleControls && !captureMode && (
-        <div className="mt-3 flex items-center gap-3 rounded-lg border border-elevated bg-surface px-3 py-2">
-          <button
-            type="button"
-            onClick={() => handleScale(activeZoneName, -SCALE_STEP)}
-            disabled={activeTransform.scale <= SCALE_MIN}
-            className="rounded p-0.5 text-text-muted transition-colors hover:text-cyan disabled:opacity-30"
-            aria-label="Reducir tamaño"
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </button>
-          <input
-            type="range"
-            min={SCALE_MIN}
-            max={SCALE_MAX}
-            step={SCALE_STEP}
-            value={activeTransform.scale}
-            onChange={(e) =>
-              activeOnChange?.({ ...activeTransform, scale: parseFloat(e.target.value) })
-            }
-            className="h-1 w-24 cursor-pointer appearance-none rounded-full bg-elevated accent-cyan [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan"
-          />
-          <button
-            type="button"
-            onClick={() => handleScale(activeZoneName, SCALE_STEP)}
-            disabled={activeTransform.scale >= SCALE_MAX}
-            className="rounded p-0.5 text-text-muted transition-colors hover:text-cyan disabled:opacity-30"
-            aria-label="Aumentar tamaño"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </button>
-          <span className="ml-1 font-mono text-[10px] text-text-muted">
-            {Math.round(activeTransform.scale * 100)}%
-          </span>
+      {/* Scale controls — one row per draggable zone visible on this side */}
+      {!captureMode && scaleControls.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2">
+          {scaleControls.map((c) => (
+            <div
+              key={c.key}
+              className="flex items-center gap-3 rounded-lg border border-elevated bg-surface px-3 py-2"
+            >
+              <span className="w-24 shrink-0 truncate text-[10px] text-text-muted">{c.label}</span>
+              <button
+                type="button"
+                onClick={() => handleScale(c.key, -SCALE_STEP)}
+                disabled={c.transform.scale <= SCALE_MIN}
+                className="rounded p-0.5 text-text-muted transition-colors hover:text-cyan disabled:opacity-30"
+                aria-label={`Reducir tamaño de ${c.label}`}
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <input
+                type="range"
+                min={SCALE_MIN}
+                max={SCALE_MAX}
+                step={SCALE_STEP}
+                value={c.transform.scale}
+                onChange={(e) => c.onChange({ ...c.transform, scale: parseFloat(e.target.value) })}
+                className="h-1 w-24 cursor-pointer appearance-none rounded-full bg-elevated accent-cyan [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan"
+              />
+              <button
+                type="button"
+                onClick={() => handleScale(c.key, SCALE_STEP)}
+                disabled={c.transform.scale >= SCALE_MAX}
+                className="rounded p-0.5 text-text-muted transition-colors hover:text-cyan disabled:opacity-30"
+                aria-label={`Aumentar tamaño de ${c.label}`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <span className="ml-1 font-mono text-[10px] text-text-muted">
+                {Math.round(c.transform.scale * 100)}%
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>

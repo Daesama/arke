@@ -99,6 +99,7 @@ export default function CrearPage() {
   const [side, setSide] = useState<"front" | "back">("front");
   const [zones, setZones] = useState<ZonesMap>({ ...emptyZones });
   const [activeTab, setActiveTab] = useState<"config" | "preview">("config");
+  const [pechoTransform, setPechoTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [abdominalTransform, setAbdominalTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [espaldaTransform, setEspaldaTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [isUploading, setIsUploading] = useState(false);
@@ -269,6 +270,9 @@ export default function CrearPage() {
         const zoneState = zones[zone.key];
         if (!zoneState.file) continue;
         formData.set(`zone_${zone.key}`, zoneState.file);
+        if (zone.key === "pechoBolsillo") {
+          formData.set(`transform_${zone.key}`, JSON.stringify(pechoTransform));
+        }
         if (zone.key === "abdominalGrande") {
           formData.set(`transform_${zone.key}`, JSON.stringify(abdominalTransform));
         }
@@ -583,6 +587,8 @@ export default function CrearPage() {
                 color={selectedColor.value}
                 side={side}
                 onSideChange={handleSideChange}
+                pechoTransform={pechoTransform}
+                onPechoTransformChange={setPechoTransform}
                 abdominalTransform={abdominalTransform}
                 onAbdominalTransformChange={setAbdominalTransform}
                 espaldaTransform={espaldaTransform}

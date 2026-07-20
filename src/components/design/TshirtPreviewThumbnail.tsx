@@ -67,6 +67,9 @@ export const TshirtPreviewThumbnail = forwardRef<
   const collar = adjustColor(colorHex, -60);
   const collarInner = adjustColor(colorHex, -80);
 
+  const pechoScale = pecho?.transform?.scale ?? 1;
+  const pechoOffX = pecho?.transform?.offsetX ?? 0;
+  const pechoOffY = pecho?.transform?.offsetY ?? 0;
   const abdScale = abdominal?.transform?.scale ?? 1;
   const abdOffX = abdominal?.transform?.offsetX ?? 0;
   const abdOffY = abdominal?.transform?.offsetY ?? 0;
@@ -74,9 +77,9 @@ export const TshirtPreviewThumbnail = forwardRef<
   const espOffX = espalda?.transform?.offsetX ?? 0;
   const espOffY = espalda?.transform?.offsetY ?? 0;
 
-  const pechoX = 0.27 * VB_W;
-  const pechoY = 0.24 * VB_H;
-  const pechoW = 0.15 * VB_W;
+  const pechoW = 0.15 * pechoScale * VB_W;
+  const pechoX = (0.27 + pechoOffX / 100) * VB_W;
+  const pechoY = (0.24 + pechoOffY / 100) * VB_H;
 
   const abdW = (0.4 * abdScale) * VB_W;
   const abdX = VB_W / 2 - abdW / 2 + (abdW * abdOffX) / 100;
