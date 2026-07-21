@@ -7,7 +7,7 @@ import { SizeSelector } from "@/components/design/SizeSelector";
 import { GenderSelector } from "@/components/design/GenderSelector";
 import { MaterialSelector } from "@/components/design/MaterialSelector";
 import { Button } from "@/components/ui/Button";
-import { ShoppingCart, Settings2, Eye, LogIn } from "lucide-react";
+import { ShoppingCart, LogIn } from "lucide-react";
 import { getDesglose, calcularSubtotal, formatCOP } from "@/lib/utils/pricing";
 import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils/cn";
@@ -98,7 +98,6 @@ export default function CrearPage() {
   const [size, setSize] = useState<TshirtSize | null>(null);
   const [side, setSide] = useState<"front" | "back">("front");
   const [zones, setZones] = useState<ZonesMap>({ ...emptyZones });
-  const [activeTab, setActiveTab] = useState<"config" | "preview">("config");
   const [pechoTransform, setPechoTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [abdominalTransform, setAbdominalTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [espaldaTransform, setEspaldaTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
@@ -117,6 +116,17 @@ export default function CrearPage() {
   const breakdown = getDesglose(material, genero, activeZones);
   const subtotal = genero && material ? calcularSubtotal(material, genero, activeZones) : 0;
 
+  // Removing or replacing a zone's image without resetting its transform
+  // left the next image inheriting the previous one's drag offset/scale —
+  // it would appear pre-shifted, making it look like "moving" was broken.
+  // Every new image in a zone now starts back at dead center, 100% scale.
+  const resetZoneTransform = useCallback((zone: DesignZone) => {
+    const defaultTransform: ZoneTransform = { offsetX: 0, offsetY: 0, scale: 1 };
+    if (zone === "pechoBolsillo") setPechoTransform(defaultTransform);
+    if (zone === "abdominalGrande") setAbdominalTransform(defaultTransform);
+    if (zone === "espaldaGrande") setEspaldaTransform(defaultTransform);
+  }, []);
+
   const handleFileSelect = useCallback((zone: DesignZone, file: File) => {
     const preview = URL.createObjectURL(file);
     setZones((prev) => {
@@ -127,7 +137,8 @@ export default function CrearPage() {
         [zone]: { file, preview, originalFile: null, originalPreview: null, bgRemovalStatus: "idle" as BgRemovalStatus, bgRemovalError: null },
       };
     });
-  }, []);
+    resetZoneTransform(zone);
+  }, [resetZoneTransform]);
 
   const handleRemove = useCallback((zone: DesignZone) => {
     setZones((prev) => {
@@ -135,7 +146,8 @@ export default function CrearPage() {
       if (prev[zone].originalPreview) URL.revokeObjectURL(prev[zone].originalPreview!);
       return { ...prev, [zone]: { ...emptyZone } };
     });
-  }, []);
+    resetZoneTransform(zone);
+  }, [resetZoneTransform]);
 
   const handleRemoveBg = useCallback(async (zone: DesignZone) => {
     const zoneState = zones[zone];
@@ -347,6 +359,52 @@ export default function CrearPage() {
     return `Agregar al carrito — ${formatCOP(subtotal)}`;
   }
 
+  const bottomBar = (
+    <div className="shrink-0 border-t border-white/[0.06] bg-void/90 px-4 py-3 space-y-2.5 shadow-[0_-8px_30px_rgba(10,10,15,0.6)] backdrop-blur-xl">
+      {uploadError && (
+        <div className="rounded-xl border border-magenta/20 bg-magenta/[0.07] px-3 py-2.5 text-xs text-magenta">
+          {uploadError}
+        </div>
+      )}
+
+      {added && (
+        <div className="rounded-xl border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-xs text-cyan text-center">
+          ¡Agregado al carrito!
+        </div>
+      )}
+
+      {breakdown.items.length > 0 && (
+        <div className="space-y-1">
+          {breakdown.items.map((line) => (
+            <div key={line.label} className="flex justify-between text-xs">
+              <span className={line.type === "estampado" ? "text-cyan" : line.type === "envio" ? "text-text-muted" : "text-text-secondary"}>
+                {line.label}
+              </span>
+              <span className="font-mono text-text-muted">{formatCOP(line.price)}</span>
+            </div>
+          ))}
+          <div className="border-t border-elevated pt-1">
+            <div className="flex justify-between text-xs">
+              <span className="font-medium text-text-primary">Total</span>
+              <span className="font-mono font-medium text-text-primary">{formatCOP(breakdown.total)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Button
+        onClick={handleAddToCart}
+        className="w-full"
+        variant={added ? "secondary" : "primary"}
+        disabled={!canAddToCart || isUploading}
+        isLoading={isUploading}
+      >
+        {!isUploading && <ShoppingCart className="h-4 w-4" />}
+        {getButtonLabel()}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="relative mx-auto flex h-[calc(100vh-4.25rem)] max-w-7xl flex-col">
       {showAuthModal && (
@@ -389,46 +447,18 @@ export default function CrearPage() {
         </h1>
       </div>
 
-      {/* Mobile tabs */}
-      <div className="flex border-b border-white/[0.06] bg-deep/40 backdrop-blur-sm lg:hidden">
-        <button
-          type="button"
-          onClick={() => setActiveTab("config")}
-          className={cn(
-            "flex flex-1 items-center justify-center gap-2 py-3 text-[13px] font-medium transition-all duration-200",
-            activeTab === "config"
-              ? "border-b-2 border-cyan text-cyan"
-              : "text-text-muted hover:text-text-secondary",
-          )}
-        >
-          <Settings2 className="h-4 w-4" />
-          Configurar
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("preview")}
-          className={cn(
-            "flex flex-1 items-center justify-center gap-2 py-3 text-[13px] font-medium transition-all duration-200",
-            activeTab === "preview"
-              ? "border-b-2 border-cyan text-cyan"
-              : "text-text-muted hover:text-text-secondary",
-          )}
-        >
-          <Eye className="h-4 w-4" />
-          Preview
-          {hasAnyImage && <span className="h-1.5 w-1.5 rounded-full bg-cyan shadow-[0_0_8px_rgba(0,240,255,0.5)]" />}
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="flex flex-1 overflow-hidden">
+      {/*
+        Two full layouts below, both always mounted and sharing the same
+        state — Tailwind's `lg:` breakpoint (not JS) decides which one is
+        visible, so resizing across the breakpoint never loses in-progress
+        selections or uploads. Keep it that way rather than branching in JS
+        on a resize listener. `bottomBar` is defined once above and reused
+        by both so the price/cart UI can't drift between them.
+      */}
+      {/* Desktop layout — config panel + separate read-only preview panel */}
+      <div className="hidden flex-1 overflow-hidden lg:flex">
         {/* Left panel — Configuration */}
-        <div
-          className={cn(
-            "flex flex-col border-r border-white/[0.06] bg-gradient-to-b from-deep/80 to-void/90 lg:w-[420px] lg:min-w-[380px]",
-            activeTab === "config" ? "flex w-full" : "hidden lg:flex",
-          )}
-        >
+        <div className="flex w-full flex-col border-r border-white/[0.06] bg-gradient-to-b from-deep/80 to-void/90 lg:w-[420px] lg:min-w-[380px]">
           <div className="flex-1 overflow-y-auto p-4">
           <div className="flex flex-col gap-3">
             {/* 1. Gender */}
@@ -515,59 +545,11 @@ export default function CrearPage() {
           </div>
           </div>
 
-          {/* Bottom — Price + Add to cart */}
-          <div className="shrink-0 border-t border-white/[0.06] bg-void/90 px-4 py-3 space-y-2.5 shadow-[0_-8px_30px_rgba(10,10,15,0.6)] backdrop-blur-xl">
-            {uploadError && (
-              <div className="rounded-xl border border-magenta/20 bg-magenta/[0.07] px-3 py-2.5 text-xs text-magenta">
-                {uploadError}
-              </div>
-            )}
-
-            {added && (
-              <div className="rounded-xl border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-xs text-cyan text-center">
-                ¡Agregado al carrito!
-              </div>
-            )}
-
-            {breakdown.items.length > 0 && (
-              <div className="space-y-1">
-                {breakdown.items.map((line) => (
-                  <div key={line.label} className="flex justify-between text-xs">
-                    <span className={line.type === "estampado" ? "text-cyan" : line.type === "envio" ? "text-text-muted" : "text-text-secondary"}>
-                      {line.label}
-                    </span>
-                    <span className="font-mono text-text-muted">{formatCOP(line.price)}</span>
-                  </div>
-                ))}
-                <div className="border-t border-elevated pt-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium text-text-primary">Total</span>
-                    <span className="font-mono font-medium text-text-primary">{formatCOP(breakdown.total)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <Button
-              onClick={handleAddToCart}
-              className="w-full"
-              variant={added ? "secondary" : "primary"}
-              disabled={!canAddToCart || isUploading}
-              isLoading={isUploading}
-            >
-              {!isUploading && <ShoppingCart className="h-4 w-4" />}
-              {getButtonLabel()}
-            </Button>
-          </div>
+          {bottomBar}
         </div>
 
         {/* Right panel — Preview */}
-        <div
-          className={cn(
-            "flex flex-1 flex-col items-center justify-center overflow-y-auto p-4 lg:block",
-            activeTab === "preview" ? "block" : "hidden",
-          )}
-        >
+        <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto p-4">
           <div className="gradient-border flex h-full flex-col rounded-2xl bg-deep/60 backdrop-blur-sm">
             <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
               <p className="text-sm font-medium text-text-primary font-heading">Preview</p>
@@ -623,6 +605,98 @@ export default function CrearPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/*
+        Mobile layout — config on top, t-shirt preview with tap-to-upload
+        zones right below. Passing pechoUpload/abdominalUpload/espaldaUpload
+        is what switches TshirtPreview into interactive upload mode (see the
+        doc comment on those props in TshirtPreview.tsx); the desktop panel
+        below intentionally omits them to stay read-only.
+      */}
+      <div className="flex flex-1 flex-col overflow-hidden lg:hidden">
+        <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-3 p-4">
+          <GenderSelector value={genero} onChange={setGenero} />
+          <MaterialSelector value={material} onChange={setMaterial} />
+
+          <div>
+            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">Color</p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c.slug}
+                  type="button"
+                  onClick={() => setSelectedColor(c)}
+                  className={cn(
+                    "h-7 w-7 rounded-full border-2 transition-all duration-200",
+                    selectedColor.slug === c.slug
+                      ? "border-cyan shadow-glow-cyan scale-110"
+                      : "border-elevated hover:border-text-muted hover:scale-105",
+                  )}
+                  style={{ backgroundColor: c.value }}
+                  aria-label={c.name}
+                  title={c.name}
+                />
+              ))}
+            </div>
+          </div>
+
+          <SizeSelector value={size} onChange={setSize} />
+        </div>
+
+        {/* T-shirt preview — upload, move and resize the print directly on the shirt */}
+        <div className="flex flex-col items-center px-4 pb-1">
+          <p className="mb-2 self-start text-[10px] font-medium uppercase tracking-wider text-text-muted">
+            Toca la camiseta para agregar tu diseño
+          </p>
+          <TshirtPreview
+            zones={{
+              pechoBolsillo: zones.pechoBolsillo.preview,
+              abdominalGrande: zones.abdominalGrande.preview,
+              espaldaGrande: zones.espaldaGrande.preview,
+            }}
+            color={selectedColor.value}
+            side={side}
+            onSideChange={handleSideChange}
+            pechoTransform={pechoTransform}
+            onPechoTransformChange={setPechoTransform}
+            abdominalTransform={abdominalTransform}
+            onAbdominalTransformChange={setAbdominalTransform}
+            espaldaTransform={espaldaTransform}
+            onEspaldaTransformChange={setEspaldaTransform}
+            pechoUpload={{
+              onFileSelect: (file) => handleFileSelect("pechoBolsillo", file),
+              onRemove: () => handleRemove("pechoBolsillo"),
+              onRemoveBg: () => handleRemoveBg("pechoBolsillo"),
+              onRestoreBg: () => handleRestoreBg("pechoBolsillo"),
+              bgStatus: zones.pechoBolsillo.bgRemovalStatus,
+              bgError: zones.pechoBolsillo.bgRemovalError,
+              disabled: isUploading,
+            }}
+            abdominalUpload={{
+              onFileSelect: (file) => handleFileSelect("abdominalGrande", file),
+              onRemove: () => handleRemove("abdominalGrande"),
+              onRemoveBg: () => handleRemoveBg("abdominalGrande"),
+              onRestoreBg: () => handleRestoreBg("abdominalGrande"),
+              bgStatus: zones.abdominalGrande.bgRemovalStatus,
+              bgError: zones.abdominalGrande.bgRemovalError,
+              disabled: isUploading,
+            }}
+            espaldaUpload={{
+              onFileSelect: (file) => handleFileSelect("espaldaGrande", file),
+              onRemove: () => handleRemove("espaldaGrande"),
+              onRemoveBg: () => handleRemoveBg("espaldaGrande"),
+              onRestoreBg: () => handleRestoreBg("espaldaGrande"),
+              bgStatus: zones.espaldaGrande.bgRemovalStatus,
+              bgError: zones.espaldaGrande.bgRemovalError,
+              disabled: isUploading,
+            }}
+          />
+        </div>
+        </div>
+
+        {bottomBar}
       </div>
     </div>
   );

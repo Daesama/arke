@@ -173,36 +173,58 @@ El esquema SQL completo está en `supabase/migrations/001_initial_schema.sql`.
 Hero section con animación del isotipo (fragmentos aparecen uno a uno). Título grande: "Imaginalo. La IA lo crea. Tú lo vistes." CTA principal al chatbot. Sección de cómo funciona (3 pasos). Galería de diseños destacados. Footer con links y redes.
 
 ### 2. Editor de Camiseta (`/crear`) — PÁGINA CORE
-Split layout: configuración a la izquierda, preview en tiempo real a la derecha.
 
-**Panel izquierdo — Configuración:**
-- Selector de color de camiseta (negro, blanco, gris, navy)
-- Toggle de vista: Frente / Espalda
-- 3 zonas de carga de imagen (el usuario sube sus propias imágenes):
-  - "Pecho bolsillo" — imagen pequeña arriba a la izquierda del frente (~10×10cm)
-  - "Abdominal grande" — imagen grande en el centro del frente (~30×35cm)
-  - "Espalda grande" — imagen grande centrada en la espalda (~30×35cm)
-- Cada zona: botón subir (jpg/png/webp), preview thumbnail, botón eliminar
-- El usuario puede usar 1, 2 o las 3 zonas
-- Selector de talla (XS–XXL)
-- Botón "Agregar al carrito"
+Archivo: `src/app/crear/page.tsx`. El componente `CrearPage` renderiza **dos layouts completos y mutuamente excluyentes** vía CSS (no hay dos componentes React separados, ni lógica condicional por JS — ambos bloques JSX existen siempre en el DOM y Tailwind decide cuál se ve):
 
-**Panel derecho — Preview:**
-- Mockup SVG de camiseta que cambia de color
-- Vista frontal muestra pecho bolsillo (arriba-izq, pequeña) + abdominal (centro, grande)
-- Vista trasera muestra espalda grande (centro)
-- Las imágenes se renderizan sobre la camiseta en tiempo real
+- Bloque desktop: `<div className="hidden flex-1 overflow-hidden lg:flex">` — oculto por debajo de `lg` (1024px), visible en `lg` en adelante.
+- Bloque mobile: `<div className="flex flex-1 flex-col overflow-hidden lg:hidden">` — visible por debajo de `lg`, oculto en `lg` en adelante.
 
-**Flujo:**
-1. Usuario sube imágenes a las zonas deseadas
-2. Preview se actualiza en tiempo real
-3. Elige color y talla
-4. Click "Agregar al carrito"
-5. Imágenes ORIGINALES se suben a Supabase Storage (sin modificar)
-6. Se crea registro en tabla designs con config JSON de zonas
-7. El admin descarga las imágenes puras para enviar al estampador
+Ambos bloques comparten el mismo estado de React (`genero`, `material`, `selectedColor`, `size`, `side`, `zones`, `*Transform`), así que cambiar de tamaño de ventana nunca pierde el progreso del usuario. El bloque de precio + botón "Agregar al carrito" (`bottomBar`) está extraído como una constante JSX y se reutiliza en ambos layouts para no duplicar esa lógica.
 
-**NO se usa IA para procesar imágenes.** Las imágenes del usuario se colocan tal cual.
+**Selectores compartidos** (arriba en ambos layouts): Género (`GenderSelector`), Material (`MaterialSelector`), Color (swatches inline, ver `PRESET_COLORS`), Talla (`SizeSelector`). El precio se recalcula en vivo con `getDesglose`/`calcularSubtotal` (`src/lib/utils/pricing.ts`) en función de material + género + zonas activas.
+
+**Zonas de estampado** (`ZONES` en `page.tsx`, tipo `DesignZone` en `src/types/design.ts`):
+| key | label visible | lado | tamaño real aprox. |
+|---|---|---|---|
+| `pechoBolsillo` | Pecho bolsillo | front | ~10×10 cm |
+| `abdominalGrande` | Pecho grande | front | ~30×35 cm |
+| `espaldaGrande` | Espalda grande | back | ~30×35 cm |
+
+El usuario puede usar 1, 2 o las 3 zonas — no todas son obligatorias, solo se requiere al menos una (`hasAnyImage`).
+
+**Layout desktop** (`lg:` en adelante) — panel dividido, sin cambios funcionales recientes:
+- Panel izquierdo (`lg:w-[420px]`): selectores + lista vertical de `ImageUploadZone` (una fila compacta por zona: thumbnail, nombre, botón subir/eliminar, botón quitar/restaurar fondo) + `bottomBar`.
+- Panel derecho: `TshirtPreview` en modo **no interactivo para la carga** (no se le pasan las props `*Upload`) — solo muestra el resultado y permite mover/escalar la imagen ya subida (drag + fila de escala).
+
+**Layout mobile** (`lg:hidden`, ver también sección "Cambios de diseño mobile" abajo) — todo en un solo scroll vertical:
+1. Selectores (género → material → color → talla).
+2. `TshirtPreview` en **modo interactivo**: se le pasan `pechoUpload` / `abdominalUpload` / `espaldaUpload` (prop `ZoneUploadHandlers` en `TshirtPreview.tsx`). Esto hace que, cuando una zona está vacía, el propio componente dibuje un recuadro punteado tap-to-upload **encima de la silueta de la camiseta, en la posición real de esa zona de estampado** (no hay lista de uploads separada en mobile — subir, mover, escalar y quitar fondo pasa todo directamente sobre la camiseta).
+3. `bottomBar` (precio + "Agregar al carrito"), fijo al fondo del layout mobile mientras el contenido de arriba scrollea (mismo patrón que el panel izquierdo desktop: contenedor `flex flex-col` con una zona interna `flex-1 overflow-y-auto` y `bottomBar` como hermano `shrink-0`).
+
+**Cambios de diseño mobile (histórico, 2026-07):** Antes existían pestañas "Configurar"/"Preview" que separaban la config del preview en mobile. Se reemplazaron por el layout unificado de arriba porque la mayoría del tráfico es mobile y separar configuración de la vista previa resultaba poco intuitivo. Las posiciones verticales de las zonas sobre la camiseta (`top: "36%"` para pecho grande, `top: "28%"` para espalda grande, en `TshirtPreview.tsx`) están calibradas a mano contra el `viewBox="0 0 320 420"` del SVG para que los recuadros queden centrados sobre el torso — si se ajusta el dibujo del SVG (`bodyPath`), revisar si esas constantes siguen viéndose centradas.
+
+**Flujo de compra:**
+1. Usuario sube imágenes a las zonas deseadas (desde la lista en desktop, o tocando la camiseta en mobile)
+2. Preview se actualiza en tiempo real; puede mover (drag) y escalar (+/- o slider) cada imagen dentro de su zona
+3. Opcional: "Quitar fondo" corre segmentación client-side (ver `handleRemoveBg` en `page.tsx`, usa `@huggingface/transformers` cargado desde CDN, modelo `briaai/RMBG-1.4`, WASM) — no toca el servidor
+4. Elige género, material, color y talla
+5. Click "Agregar al carrito" → si no hay sesión, se muestra `showAuthModal` en vez de continuar
+6. Imágenes ORIGINALES (o sin fondo, si se aplicó) se suben a Supabase Storage vía `uploadDesignAndSave` (`src/app/crear/actions.ts`) — sin más modificación
+7. Se crea registro en tabla `designs` con config JSON de zonas (incluye `ZoneTransform`: offsetX/offsetY/scale de cada zona activa)
+8. El admin descarga las imágenes puras para enviar al estampador
+
+**NO se usa IA generativa para procesar imágenes en este flujo.** Las imágenes del usuario se colocan tal cual (la única transformación posible es la remoción de fondo, que es determinística/local, no generativa).
+
+#### Componente `TshirtPreview` (`src/components/design/TshirtPreview.tsx`)
+
+Dibuja la camiseta como un SVG a mano (path `bodyPath`, `viewBox="0 0 320 420"`) y superpone las imágenes de cada zona como `<div>` posicionados en absoluto con `top`/`left` en porcentaje del contenedor. Es el único lugar donde vive la lógica de drag (pointer events) y escala (+/-, slider, rueda del mouse) de las 3 zonas.
+
+Props relevantes para quien lo vaya a tocar:
+- `pechoTransform` / `abdominalTransform` / `espaldaTransform` + sus `on*TransformChange`: estado controlado (`ZoneTransform = { offsetX, offsetY, scale }`) que vive en `page.tsx`, no dentro del componente.
+- `pechoUpload` / `abdominalUpload` / `espaldaUpload` (tipo `ZoneUploadHandlers`, opcionales): **si se pasan**, el componente se vuelve interactivo para la carga — dibuja el placeholder tap-to-upload cuando la zona está vacía, un botón "✕" para eliminar sobre la imagen ya subida, y un botón de quitar/restaurar fondo en la fila de escala. **Si no se pasan** (como en el panel derecho del layout desktop), el componente queda en modo solo-preview para la carga: no hay placeholders ni botón de eliminar, solo el texto genérico "Sube una imagen para el frente/espalda". Este flag-por-presencia-de-prop es intencional: permite reusar el mismo componente para el panel de preview de desktop (pasivo) y para la superficie interactiva de mobile (activa) sin duplicar el SVG ni la lógica de drag/escala.
+- `captureMode`: oculta todos los controles (toggle frente/espalda, botones, fila de escala) — se usa para generar una captura "limpia" de la camiseta sin UI.
+
+Las coordenadas `top`/`left`/`width` de cada zona (pecho bolsillo: `top:24%, left:27%, width:15%`; pecho grande: `top:36%, width:40%`, centrado; espalda grande: `top:28%, width:48%`, centrado) están calibradas a ojo contra el `bodyPath` del SVG, no derivadas matemáticamente. Si se cambia el dibujo de la camiseta, hay que reajustar estos números visualmente (no hay una fórmula que los relacione).
 
 ### 3. Catálogo (`/catalogo`)
 Grid de diseños pre-hechos por ARKE. Filtros por categoría (gaming, anime, abstracto, pop culture). Click en un diseño → lo muestra en preview de camiseta → agregar al carrito.

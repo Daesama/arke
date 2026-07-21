@@ -1,14 +1,24 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useId } from "react";
 import { cn } from "@/lib/utils/cn";
-import { RotateCcw, Move, Minus, Plus } from "lucide-react";
-import type { ZoneTransform } from "@/types/design";
+import { RotateCcw, Move, Minus, Plus, Upload, X, Loader2, Undo2, Eraser } from "lucide-react";
+import type { ZoneTransform, BgRemovalStatus } from "@/types/design";
 
 interface ZoneImages {
   pechoBolsillo: string | null;
   abdominalGrande: string | null;
   espaldaGrande: string | null;
+}
+
+interface ZoneUploadHandlers {
+  onFileSelect: (file: File) => void;
+  onRemove: () => void;
+  onRemoveBg?: () => void;
+  onRestoreBg?: () => void;
+  bgStatus?: BgRemovalStatus;
+  bgError?: string | null;
+  disabled?: boolean;
 }
 
 interface TshirtPreviewProps {
@@ -23,6 +33,56 @@ interface TshirtPreviewProps {
   espaldaTransform?: ZoneTransform;
   onEspaldaTransformChange?: (transform: ZoneTransform) => void;
   captureMode?: boolean;
+  /**
+   * Presence of these props is the on/off switch for "interactive upload" mode.
+   * Pass them (from the mobile layout in crear/page.tsx) to get a tap-to-upload
+   * placeholder drawn directly on the shirt for an empty zone, plus a remove
+   * button and a background-removal toggle on an already-uploaded image.
+   * Omit them (desktop's read-only right-hand preview panel) to fall back to
+   * the plain "Sube una imagen..." text and no upload/remove affordances —
+   * same SVG and drag/scale logic either way, just without the upload UI.
+   */
+  pechoUpload?: ZoneUploadHandlers;
+  abdominalUpload?: ZoneUploadHandlers;
+  espaldaUpload?: ZoneUploadHandlers;
+}
+
+function UploadPlaceholder({
+  label,
+  compact,
+  disabled,
+  onFileSelect,
+}: {
+  label: string;
+  compact?: boolean;
+  disabled?: boolean;
+  onFileSelect: (file: File) => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-cyan/40 bg-void/50 text-center backdrop-blur-sm transition-all duration-200 active:scale-95 active:border-cyan/70",
+        disabled && "pointer-events-none opacity-40",
+      )}
+    >
+      <Upload className={compact ? "h-3 w-3 text-cyan/70" : "h-4 w-4 text-cyan/70"} />
+      {!compact && (
+        <span className="px-1 text-[9px] font-medium leading-tight text-cyan/70">{label}</span>
+      )}
+      <input
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp"
+        className="hidden"
+        disabled={disabled}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onFileSelect(file);
+          e.target.value = "";
+        }}
+        aria-label={`Agregar imagen para ${label}`}
+      />
+    </label>
+  );
 }
 
 const DEFAULT_TRANSFORM: ZoneTransform = { offsetX: 0, offsetY: 0, scale: 1 };
@@ -52,7 +112,16 @@ export function TshirtPreview({
   espaldaTransform,
   onEspaldaTransformChange,
   captureMode,
+  pechoUpload,
+  abdominalUpload,
+  espaldaUpload,
 }: TshirtPreviewProps) {
+  // Desktop and mobile layouts both mount a TshirtPreview at the same time
+  // (visibility toggled via CSS, see crear/page.tsx) — a hardcoded gradient
+  // id would collide between the two instances and one of them would fail
+  // to paint its fill. useId keeps each instance's gradient unique.
+  const gradId = `tshirtGrad-${useId().replace(/:/g, "")}`;
+
   const hasAnyFrontImage = zones.pechoBolsillo || zones.abdominalGrande;
   const hasBackImage = !!zones.espaldaGrande;
 
@@ -137,10 +206,10 @@ export function TshirtPreview({
   const showAbdominalScale = side === "front" && !!zones.abdominalGrande && !!onAbdominalTransformChange;
   const showEspaldaScale = side === "back" && !!zones.espaldaGrande && !!onEspaldaTransformChange;
 
-  const scaleControls: { key: "pecho" | "abdominal" | "espalda"; label: string; transform: ZoneTransform; onChange: (t: ZoneTransform) => void }[] = [];
-  if (showPechoScale) scaleControls.push({ key: "pecho", label: "Pecho bolsillo", transform: pechoT, onChange: onPechoTransformChange! });
-  if (showAbdominalScale) scaleControls.push({ key: "abdominal", label: "Pecho grande", transform: abdT, onChange: onAbdominalTransformChange! });
-  if (showEspaldaScale) scaleControls.push({ key: "espalda", label: "Espalda grande", transform: espT, onChange: onEspaldaTransformChange! });
+  const scaleControls: { key: "pecho" | "abdominal" | "espalda"; label: string; transform: ZoneTransform; onChange: (t: ZoneTransform) => void; upload?: ZoneUploadHandlers }[] = [];
+  if (showPechoScale) scaleControls.push({ key: "pecho", label: "Pecho bolsillo", transform: pechoT, onChange: onPechoTransformChange!, upload: pechoUpload });
+  if (showAbdominalScale) scaleControls.push({ key: "abdominal", label: "Pecho grande", transform: abdT, onChange: onAbdominalTransformChange!, upload: abdominalUpload });
+  if (showEspaldaScale) scaleControls.push({ key: "espalda", label: "Espalda grande", transform: espT, onChange: onEspaldaTransformChange!, upload: espaldaUpload });
 
   const shadow = adjustColor(color, -30);
   const highlight = adjustColor(color, 12);
@@ -211,9 +280,19 @@ export function TshirtPreview({
         </div>
       )}
 
+      {/*
+        touch-none (touch-action: none) below and on each draggable zone is
+        required for a usable drag on touch devices: without it, the browser
+        treats a finger-down-and-move here as a page-scroll gesture and the
+        image drag loses the touch mid-gesture. The Move badge on each image
+        is also marked pointer-events-none so a touch starting exactly on
+        that little overlay hits the zone div underneath instead of the
+        badge — one consistent drag target instead of two nested ones with
+        their own touch-action/pointer-capture edge cases.
+      */}
       <div
         ref={containerRef}
-        className={cn("relative aspect-[3/4] w-full", !captureMode && "max-w-[320px]")}
+        className={cn("relative aspect-[3/4] w-full touch-none", !captureMode && "max-w-[320px]")}
         onWheel={handleWheel}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -225,7 +304,7 @@ export function TshirtPreview({
           style={{ filter: "drop-shadow(0 6px 20px rgba(0,0,0,0.35))" }}
         >
           <defs>
-            <linearGradient id="tshirtGrad" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor={shadow} />
               <stop offset="18%" stopColor={color} />
               <stop offset="45%" stopColor={highlight} />
@@ -237,7 +316,7 @@ export function TshirtPreview({
           {/* Main shape */}
           <path
             d={bodyPath + (side === "front" ? frontCollar : backCollar)}
-            fill="url(#tshirtGrad)"
+            fill={`url(#${gradId})`}
             stroke={seam}
             strokeWidth="1"
             strokeLinejoin="round"
@@ -277,13 +356,20 @@ export function TshirtPreview({
           <path d="M300,140 C296,158 292,164 292,164" stroke={seam} strokeWidth="0.4" fill="none" opacity="0.3" />
         </svg>
 
-        {/* Design overlays */}
+        {/*
+          Design overlays — top/left/width below are hand-tuned percentages of
+          this container, eyeballed against the bodyPath SVG above (viewBox
+          320x420), not derived from it. The same numbers are reused for both
+          the empty-zone upload placeholder and the uploaded image, so each
+          zone only has one "home" position to keep in sync. If bodyPath ever
+          changes shape, re-check these visually — nothing enforces the match.
+        */}
         {side === "front" && (
           <>
             {zones.pechoBolsillo && (
               <div
                 className={cn(
-                  "absolute select-none",
+                  "absolute select-none touch-none",
                   draggingZone === "pecho" ? "cursor-grabbing" : "cursor-grab",
                   draggingZone !== "pecho" && "transition-all duration-150",
                 )}
@@ -301,21 +387,43 @@ export function TshirtPreview({
                   draggable={false}
                 />
                 {onPechoTransformChange && !captureMode && (
-                  <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan/80 text-void shadow-md">
+                  <div className="pointer-events-none absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan/80 text-void shadow-md">
                     <Move className="h-3 w-3" />
                   </div>
                 )}
+                {pechoUpload && !captureMode && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); pechoUpload.onRemove(); }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    disabled={pechoUpload.disabled}
+                    className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-elevated bg-void/90 text-text-muted shadow-md transition-colors hover:border-magenta/40 hover:text-magenta"
+                    aria-label="Eliminar pecho bolsillo"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            )}
+            {!zones.pechoBolsillo && pechoUpload && (
+              <div className="absolute aspect-square" style={{ top: "24%", left: "27%", width: "15%" }}>
+                <UploadPlaceholder
+                  label="Pecho bolsillo"
+                  compact
+                  disabled={pechoUpload.disabled}
+                  onFileSelect={pechoUpload.onFileSelect}
+                />
               </div>
             )}
             {zones.abdominalGrande && (
               <div
                 className={cn(
-                  "absolute left-1/2 select-none",
+                  "absolute left-1/2 select-none touch-none",
                   draggingZone === "abdominal" ? "cursor-grabbing" : "cursor-grab",
                   draggingZone !== "abdominal" && "transition-all duration-150",
                 )}
                 style={{
-                  top: `calc(32% + ${abdT.offsetY}%)`,
+                  top: `calc(36% + ${abdT.offsetY}%)`,
                   width: `${40 * abdT.scale}%`,
                   transform: `translateX(calc(-50% + ${abdT.offsetX}%))`,
                 }}
@@ -328,10 +436,34 @@ export function TshirtPreview({
                   draggable={false}
                 />
                 {onAbdominalTransformChange && !captureMode && (
-                  <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan/80 text-void shadow-md">
+                  <div className="pointer-events-none absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan/80 text-void shadow-md">
                     <Move className="h-3 w-3" />
                   </div>
                 )}
+                {abdominalUpload && !captureMode && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); abdominalUpload.onRemove(); }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    disabled={abdominalUpload.disabled}
+                    className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-elevated bg-void/90 text-text-muted shadow-md transition-colors hover:border-magenta/40 hover:text-magenta"
+                    aria-label="Eliminar pecho grande"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            )}
+            {!zones.abdominalGrande && abdominalUpload && (
+              <div
+                className="absolute left-1/2 aspect-[6/7] -translate-x-1/2"
+                style={{ top: "36%", width: "40%" }}
+              >
+                <UploadPlaceholder
+                  label="Pecho grande"
+                  disabled={abdominalUpload.disabled}
+                  onFileSelect={abdominalUpload.onFileSelect}
+                />
               </div>
             )}
           </>
@@ -340,12 +472,12 @@ export function TshirtPreview({
         {side === "back" && zones.espaldaGrande && (
           <div
             className={cn(
-              "absolute left-1/2 select-none",
+              "absolute left-1/2 select-none touch-none",
               draggingZone === "espalda" ? "cursor-grabbing" : "cursor-grab",
               draggingZone !== "espalda" && "transition-all duration-150",
             )}
             style={{
-              top: `calc(24% + ${espT.offsetY}%)`,
+              top: `calc(28% + ${espT.offsetY}%)`,
               width: `${48 * espT.scale}%`,
               transform: `translateX(calc(-50% + ${espT.offsetX}%))`,
             }}
@@ -358,20 +490,44 @@ export function TshirtPreview({
               draggable={false}
             />
             {onEspaldaTransformChange && !captureMode && (
-              <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan/80 text-void shadow-md">
+              <div className="pointer-events-none absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-cyan/80 text-void shadow-md">
                 <Move className="h-3 w-3" />
               </div>
             )}
+            {espaldaUpload && !captureMode && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); espaldaUpload.onRemove(); }}
+                onPointerDown={(e) => e.stopPropagation()}
+                disabled={espaldaUpload.disabled}
+                className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-elevated bg-void/90 text-text-muted shadow-md transition-colors hover:border-magenta/40 hover:text-magenta"
+                aria-label="Eliminar espalda grande"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
+        {side === "back" && !zones.espaldaGrande && espaldaUpload && (
+          <div
+            className="absolute left-1/2 aspect-[6/7] -translate-x-1/2"
+            style={{ top: "28%", width: "48%" }}
+          >
+            <UploadPlaceholder
+              label="Espalda grande"
+              disabled={espaldaUpload.disabled}
+              onFileSelect={espaldaUpload.onFileSelect}
+            />
           </div>
         )}
 
-        {side === "front" && !hasAnyFrontImage && (
+        {side === "front" && !hasAnyFrontImage && !pechoUpload && !abdominalUpload && (
           <div className="absolute left-1/2 top-[42%] -translate-x-1/2 text-center">
             <p className="text-xs text-text-muted/50">Sube una imagen para el frente</p>
           </div>
         )}
 
-        {side === "back" && !hasBackImage && (
+        {side === "back" && !hasBackImage && !espaldaUpload && (
           <div className="absolute left-1/2 top-[42%] -translate-x-1/2 text-center">
             <p className="text-xs text-text-muted/50">Sube una imagen para la espalda</p>
           </div>
@@ -381,44 +537,76 @@ export function TshirtPreview({
       {/* Scale controls — one row per draggable zone visible on this side */}
       {!captureMode && scaleControls.length > 0 && (
         <div className="mt-3 flex flex-col gap-2">
-          {scaleControls.map((c) => (
-            <div
-              key={c.key}
-              className="flex items-center gap-3 rounded-lg border border-elevated bg-surface px-3 py-2"
-            >
-              <span className="w-24 shrink-0 truncate text-[10px] text-text-muted">{c.label}</span>
-              <button
-                type="button"
-                onClick={() => handleScale(c.key, -SCALE_STEP)}
-                disabled={c.transform.scale <= SCALE_MIN}
-                className="rounded p-0.5 text-text-muted transition-colors hover:text-cyan disabled:opacity-30"
-                aria-label={`Reducir tamaño de ${c.label}`}
-              >
-                <Minus className="h-3.5 w-3.5" />
-              </button>
-              <input
-                type="range"
-                min={SCALE_MIN}
-                max={SCALE_MAX}
-                step={SCALE_STEP}
-                value={c.transform.scale}
-                onChange={(e) => c.onChange({ ...c.transform, scale: parseFloat(e.target.value) })}
-                className="h-1 w-24 cursor-pointer appearance-none rounded-full bg-elevated accent-cyan [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan"
-              />
-              <button
-                type="button"
-                onClick={() => handleScale(c.key, SCALE_STEP)}
-                disabled={c.transform.scale >= SCALE_MAX}
-                className="rounded p-0.5 text-text-muted transition-colors hover:text-cyan disabled:opacity-30"
-                aria-label={`Aumentar tamaño de ${c.label}`}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-              <span className="ml-1 font-mono text-[10px] text-text-muted">
-                {Math.round(c.transform.scale * 100)}%
-              </span>
-            </div>
-          ))}
+          {scaleControls.map((c) => {
+            const bgProcessing = c.upload?.bgStatus === "processing";
+            const bgDone = c.upload?.bgStatus === "done";
+            const bgError = c.upload?.bgStatus === "error";
+            return (
+              <div key={c.key} className="flex flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-elevated bg-surface px-3 py-2 sm:gap-3">
+                  <span className="w-20 shrink-0 truncate text-[10px] text-text-muted sm:w-24">{c.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleScale(c.key, -SCALE_STEP)}
+                    disabled={c.transform.scale <= SCALE_MIN}
+                    className="rounded p-0.5 text-text-muted transition-colors hover:text-cyan disabled:opacity-30"
+                    aria-label={`Reducir tamaño de ${c.label}`}
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <input
+                    type="range"
+                    min={SCALE_MIN}
+                    max={SCALE_MAX}
+                    step={SCALE_STEP}
+                    value={c.transform.scale}
+                    onChange={(e) => c.onChange({ ...c.transform, scale: parseFloat(e.target.value) })}
+                    className="h-1 w-16 cursor-pointer appearance-none rounded-full bg-elevated accent-cyan [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan sm:w-24"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleScale(c.key, SCALE_STEP)}
+                    disabled={c.transform.scale >= SCALE_MAX}
+                    className="rounded p-0.5 text-text-muted transition-colors hover:text-cyan disabled:opacity-30"
+                    aria-label={`Aumentar tamaño de ${c.label}`}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="font-mono text-[10px] text-text-muted">
+                    {Math.round(c.transform.scale * 100)}%
+                  </span>
+                  {c.upload?.onRemoveBg && (
+                    <button
+                      type="button"
+                      onClick={bgDone ? c.upload.onRestoreBg : c.upload.onRemoveBg}
+                      disabled={bgProcessing || c.upload.disabled}
+                      className={cn(
+                        "ml-auto shrink-0 rounded p-1 transition-colors",
+                        bgDone
+                          ? "text-violet hover:bg-violet/10"
+                          : bgError
+                            ? "text-magenta hover:bg-magenta/10"
+                            : "text-cyan hover:bg-cyan/10",
+                      )}
+                      aria-label={bgDone ? `Restaurar fondo de ${c.label}` : `Quitar fondo de ${c.label}`}
+                      title={bgDone ? "Restaurar fondo original" : "Quitar fondo"}
+                    >
+                      {bgProcessing ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : bgDone ? (
+                        <Undo2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eraser className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  )}
+                </div>
+                {bgError && c.upload?.bgError && (
+                  <p className="px-1 text-[10px] text-magenta/80">{c.upload.bgError}</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

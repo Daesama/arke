@@ -2,6 +2,8 @@ import type { TshirtColor, TshirtGenero, TshirtMaterial, TshirtSize } from "./da
 
 export type DesignZone = "pechoBolsillo" | "abdominalGrande" | "espaldaGrande";
 
+export type BgRemovalStatus = "idle" | "processing" | "done" | "error";
+
 export interface ZoneTransform {
   offsetX: number;
   offsetY: number;
