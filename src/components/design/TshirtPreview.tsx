@@ -572,35 +572,47 @@ export function TshirtPreview({
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
-                  <span className="font-mono text-[10px] text-text-muted">
+                  <span className="ml-auto font-mono text-[10px] text-text-muted">
                     {Math.round(c.transform.scale * 100)}%
                   </span>
-                  {c.upload?.onRemoveBg && (
-                    <button
-                      type="button"
-                      onClick={bgDone ? c.upload.onRestoreBg : c.upload.onRemoveBg}
-                      disabled={bgProcessing || c.upload.disabled}
-                      className={cn(
-                        "ml-auto shrink-0 rounded p-1 transition-colors",
-                        bgDone
-                          ? "text-violet hover:bg-violet/10"
-                          : bgError
-                            ? "text-magenta hover:bg-magenta/10"
-                            : "text-cyan hover:bg-cyan/10",
-                      )}
-                      aria-label={bgDone ? `Restaurar fondo de ${c.label}` : `Quitar fondo de ${c.label}`}
-                      title={bgDone ? "Restaurar fondo original" : "Quitar fondo"}
-                    >
-                      {bgProcessing ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : bgDone ? (
-                        <Undo2 className="h-3.5 w-3.5" />
-                      ) : (
-                        <Eraser className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                  )}
                 </div>
+                {/*
+                  Deliberately a full labeled button under the scale row,
+                  not just an icon next to it — an icon-only trigger here
+                  went unnoticed, and quitar fondo is a feature worth
+                  surfacing plainly rather than making users discover it.
+                */}
+                {c.upload?.onRemoveBg && (
+                  <button
+                    type="button"
+                    onClick={bgDone ? c.upload.onRestoreBg : c.upload.onRemoveBg}
+                    disabled={bgProcessing || c.upload.disabled}
+                    className={cn(
+                      "flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-200",
+                      bgDone
+                        ? "border-violet/25 bg-violet/5 text-violet hover:border-violet/40 hover:bg-violet/10"
+                        : bgError
+                          ? "border-magenta/30 bg-magenta/5 text-magenta"
+                          : "border-cyan/25 bg-cyan/5 text-cyan hover:border-cyan/40 hover:bg-cyan/10",
+                    )}
+                    aria-label={bgDone ? `Restaurar fondo de ${c.label}` : `Quitar fondo de ${c.label}`}
+                  >
+                    {bgProcessing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : bgDone ? (
+                      <Undo2 className="h-3.5 w-3.5" />
+                    ) : (
+                      <Eraser className="h-3.5 w-3.5" />
+                    )}
+                    {bgProcessing
+                      ? "Quitando fondo..."
+                      : bgDone
+                        ? "Restaurar fondo original"
+                        : bgError
+                          ? "Reintentar quitar fondo"
+                          : "Quitar fondo"}
+                  </button>
+                )}
                 {bgError && c.upload?.bgError && (
                   <p className="px-1 text-[10px] text-magenta/80">{c.upload.bgError}</p>
                 )}
