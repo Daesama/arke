@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   Image as ImageIcon,
   Gift,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -15,6 +16,7 @@ const adminLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/pedidos", label: "Pedidos", icon: Package },
   { href: "/admin/pedido-gratis", label: "Pedido gratis", icon: Gift },
+  { href: "/admin/catalogo", label: "Catálogo ARKE", icon: Sparkles },
   { href: "/admin/productos", label: "Productos", icon: ShoppingBag },
   { href: "/admin/disenos", label: "Diseños", icon: ImageIcon },
 ];

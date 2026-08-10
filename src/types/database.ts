@@ -1,3 +1,7 @@
+// Import de solo-tipos (se borra al compilar), así que el ciclo
+// database.ts <-> design.ts no existe en runtime.
+import type { DesignZone } from "./design";
+
 export type OrderStatus =
   | "pending"
   | "paid"
@@ -23,7 +27,8 @@ export type PaymentStatus =
 
 export type AIProvider = "gemini" | "fal" | "openai";
 
-export type DesignCategory = "gaming" | "anime" | "abstracto" | "pop";
+// "espacial": astronautas, cohetes, SpaceX/NASA, planetas, galaxias.
+export type DesignCategory = "gaming" | "tech" | "espacial";
 
 export type PrintPosition = "pecho" | "espalda" | "pecho-pequeño";
 
@@ -82,6 +87,12 @@ export interface Design {
   is_public: boolean;
   generation_time_ms: number | null;
   created_at: string;
+  /** Solo diseños de catálogo: nombre visible en /catalogo */
+  title: string | null;
+  /** Solo diseños de catálogo: zona de estampado para la que fue pensado el arte */
+  default_zone: DesignZone | null;
+  /** Orden manual del grid de catálogo (mayor primero) */
+  sort_order: number;
 }
 
 export interface Order {

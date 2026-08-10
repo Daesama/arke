@@ -83,9 +83,11 @@ arke/
 │   │   ├── page.tsx              # Landing page / Home
 │   │   ├── globals.css           # Tailwind + variables custom
 │   │   ├── catalogo/
-│   │   │   └── page.tsx          # Catálogo de diseños pre-hechos
+│   │   │   └── page.tsx          # Catálogo de diseños propios de ARKE
 │   │   ├── crear/
-│   │   │   └── page.tsx          # Chatbot + editor de diseño (CORE)
+│   │   │   ├── page.tsx          # Server Component: resuelve ?diseno=<id>
+│   │   │   ├── CrearClient.tsx   # Editor de camiseta (CORE)
+│   │   │   └── actions.ts        # Subida de diseños del usuario
 │   │   ├── carrito/
 │   │   │   └── page.tsx          # Carrito de compras
 │   │   ├── checkout/
@@ -99,8 +101,9 @@ arke/
 │   │   │   ├── layout.tsx        # Layout admin con sidebar
 │   │   │   ├── page.tsx          # Dashboard
 │   │   │   ├── pedidos/page.tsx  # Gestión de pedidos
+│   │   │   ├── catalogo/         # Subir/publicar diseños propios de ARKE
 │   │   │   ├── productos/page.tsx# CRUD productos
-│   │   │   └── disenos/page.tsx  # Ver/descargar diseños
+│   │   │   └── disenos/page.tsx  # Ver/descargar diseños de clientes
 │   │   └── api/
 │   │       ├── chat/route.ts     # Streaming chat con Claude
 │   │       ├── generate/route.ts # Generar imagen con IA
@@ -113,9 +116,11 @@ arke/
 │   │   ├── layout/               # Header, Footer, Sidebar, MobileNav
 │   │   ├── chat/                 # (legacy — ya no se usa en /crear)
 │   │   ├── design/               # TshirtPreview, ImageUploadZone, ColorSelector, SizeSelector
+│   │   ├── catalog/              # CatalogGrid (grid + filtros de /catalogo)
 │   │   ├── cart/                 # CartItem, CartSummary
-│   │   └── admin/               # OrderTable, ProductForm, DesignDownloader
+│   │   └── admin/               # AdminSidebar, CatalogManager
 │   ├── lib/
+│   │   ├── catalog.ts            # Queries del catálogo de diseños propios
 │   │   ├── supabase/
 │   │   │   ├── client.ts         # Browser client
 │   │   │   ├── server.ts         # Server client
@@ -155,6 +160,22 @@ arke/
 
 El esquema SQL completo está en `supabase/migrations/001_initial_schema.sql`.
 
+### ⚠️ Las migraciones NO son un reflejo fiel de la base real
+
+Comprobado el 2026-08-09: la base de producción tiene drift respecto a estos archivos. Antes de escribir cualquier migración que toque políticas, **consulta los nombres reales** en vez de confiar en los archivos:
+
+```sql
+SELECT tablename, policyname, cmd, qual
+FROM pg_policies WHERE schemaname = 'public' ORDER BY tablename, policyname;
+```
+
+Lo que se encontró:
+- `002_fix_rls_admin_recursion.sql` **nunca se aplicó** (su función `is_admin()` no existía en la base). Todas las políticas de admin seguían con el `EXISTS (SELECT ... FROM profiles)` recursivo de 001, así que **cualquier lectura con la llave anónima sobre `profiles`, `products`, `designs`, `orders`, `order_items` o `feedback` fallaba con `42P17 infinite recursion`**. Estuvo oculto mucho tiempo porque casi todo el código lee con service role, que salta RLS; lo destapó `/catalogo`, la primera página que lee con la llave anónima.
+- Alguien renombró políticas desde el dashboard: en `orders` es `Admin all orders` (no `Admin manages all orders`) y en `order_items` es `Admin all items`.
+- Las políticas de INSERT que 001 define para `designs` y `orders` no existen en la base. No molesta porque las escrituras van por service role, pero significa que un insert con la llave del usuario fallaría.
+
+`006_fix_rls_recursion.sql` es el arreglo que sí se aplicó, y apunta a los nombres reales. Usa `ALTER POLICY` en vez de `DROP + CREATE`: reescribe la condición en el lugar, sin borrar objetos ni disparar la advertencia de "destructive" de Supabase — útil para cualquier cambio de políticas a futuro.
+
 ### Tablas principales:
 - **profiles** — Datos del usuario (se extiende de auth.users)
 - **products** — Tipos de camiseta (material, tallas, colores, precio)
@@ -174,7 +195,9 @@ Hero section con animación del isotipo (fragmentos aparecen uno a uno). Título
 
 ### 2. Editor de Camiseta (`/crear`) — PÁGINA CORE
 
-Archivo: `src/app/crear/page.tsx`. El componente `CrearPage` renderiza **dos layouts completos y mutuamente excluyentes** vía CSS (no hay dos componentes React separados, ni lógica condicional por JS — ambos bloques JSX existen siempre en el DOM y Tailwind decide cuál se ve):
+Son **dos archivos**: `src/app/crear/page.tsx` es un Server Component mínimo que solo monta el editor, y todo el editor vive en `src/app/crear/CrearClient.tsx`. El estado de las 3 zonas no vive en el componente sino en `src/hooks/useDesignZones.ts`, compartido con el constructor de camisas del catálogo (ver sección de Catálogo).
+
+El componente `CrearClient` renderiza **dos layouts completos y mutuamente excluyentes** vía CSS (no hay dos componentes React separados, ni lógica condicional por JS — ambos bloques JSX existen siempre en el DOM y Tailwind decide cuál se ve):
 
 - Bloque desktop: `<div className="hidden flex-1 overflow-hidden lg:flex">` — oculto por debajo de `lg` (1024px), visible en `lg` en adelante.
 - Bloque mobile: `<div className="flex flex-1 flex-col overflow-hidden lg:hidden">` — visible por debajo de `lg`, oculto en `lg` en adelante.
@@ -183,7 +206,7 @@ Ambos bloques comparten el mismo estado de React (`genero`, `material`, `selecte
 
 **Selectores compartidos** (arriba en ambos layouts): Género (`GenderSelector`), Material (`MaterialSelector`), Color (swatches inline, ver `PRESET_COLORS`), Talla (`SizeSelector`). El precio se recalcula en vivo con `getDesglose`/`calcularSubtotal` (`src/lib/utils/pricing.ts`) en función de material + género + zonas activas.
 
-**Zonas de estampado** (`ZONES` en `page.tsx`, tipo `DesignZone` en `src/types/design.ts`):
+**Zonas de estampado** (`PRINT_ZONES` en `src/lib/utils/constants.ts` — fuente única compartida por el editor, el panel admin de catálogo y las tarjetas de `/catalogo`; tipo `DesignZone` en `src/types/design.ts`):
 | key | label visible | lado | tamaño real aprox. |
 |---|---|---|---|
 | `pechoBolsillo` | Pecho bolsillo | front | ~10×10 cm |
@@ -226,8 +249,46 @@ Props relevantes para quien lo vaya a tocar:
 
 Las coordenadas `top`/`left`/`width` de cada zona (pecho bolsillo: `top:24%, left:27%, width:15%`; pecho grande: `top:36%, width:40%`, centrado; espalda grande: `top:28%, width:48%`, centrado) están calibradas a ojo contra el `bodyPath` del SVG, no derivadas matemáticamente. Si se cambia el dibujo de la camiseta, hay que reajustar estos números visualmente (no hay una fórmula que los relacione).
 
-### 3. Catálogo (`/catalogo`)
-Grid de diseños pre-hechos por ARKE. Filtros por categoría (gaming, anime, abstracto, pop culture). Click en un diseño → lo muestra en preview de camiseta → agregar al carrito.
+### 3. Catálogo (`/catalogo`) — camisas ya hechas por ARKE
+
+Grid de camisas **terminadas** que arma el admin (no diseños que el cliente configura). Se alimenta de la tabla `designs` con `is_catalog = true`; solo se muestran las que además tienen `is_public = true`.
+
+**El reparto de decisiones es lo que define todo el diseño de esta sección:**
+
+| Lo fija el admin | Lo elige el cliente |
+|---|---|
+| Color de la camiseta | Género |
+| Arte de cada zona, con su posición y escala | Material |
+| | Talla |
+
+De ahí sale que el precio **no** se pueda precalcular al crear la camisa: `getDesglose`/`calcularSubtotal` dependen de material + género, así que el total se arma en la página de detalle cuando el cliente elige. El color va en `config.color` y las zonas en `config.zones` (mismo shape `DesignZoneConfig` que usa /crear), así que **no hizo falta migración**: `designs.config` ya era JSONB.
+
+**Piezas:**
+- `src/lib/catalog.ts` — única fuente de queries del catálogo (`getCatalogDesigns`, `getPublishedCatalogDesign`, `getReusableAdminDesigns`). Normaliza la fila de BD al tipo `CatalogDesign` (`src/types/design.ts`).
+- `src/app/catalogo/page.tsx` → `CatalogGrid.tsx` — grid con filtros por categoría. Las tarjetas dibujan la camisa con `TshirtPreviewThumbnail` (SVG puro, sin interacción) y llevan a la página de detalle. Los chips de filtro solo muestran categorías que **tienen** camisas, para que ningún filtro devuelva vacío.
+- `src/app/catalogo/[id]/page.tsx` → `CatalogItemDetail.tsx` — preview grande + selectores de género/material/talla + desglose de precio + agregar al carrito. Un id inventado o una camisa en borrador dan `notFound()`.
+- `src/app/admin/catalogo/` — panel (`CatalogManager.tsx`) con dos caminos: crear una camisa desde cero (`CatalogShirtBuilder.tsx`) o reutilizar una anterior. Las server actions usan service role, así que **cada una revalida el rol de admin por su cuenta** (`requireAdmin`): el layout de `/admin` protege la navegación, no el endpoint.
+
+**Reuso del editor de /crear (importante):**
+- `src/hooks/useDesignZones.ts` concentra el manejo de las 3 zonas (archivo, preview, transform, quitar fondo con `@huggingface/transformers`). Lo usan **`CrearClient` y `CatalogShirtBuilder`**, que difieren solo en qué hacen con el resultado: uno manda al carrito, el otro guarda un item de catálogo. Si tocas el flujo de imágenes, tócalo acá y ambos quedan al día.
+- El preview **no editable** del cliente no necesitó ningún modo nuevo en `TshirtPreview`: toda la interacción de ese componente ya estaba condicionada a que le pasaran los callbacks `on*TransformChange` y los `*Upload`. `CatalogItemDetail` le pasa los `*Transform` (para posicionar el arte) pero **no** los `on*Change`, y con eso el arte queda fijo mientras el toggle frente/espalda sigue funcionando. Ojo: `captureMode` **no** sirve para esto, porque además esconde el toggle.
+
+**Migraciones:**
+- `004_catalogo_disenos.sql` — **requerida**. Agrega `title` (nombre visible), `default_zone` (zona de estampado para la que fue pensado el arte, mismas 3 keys de `DesignZone`) y `sort_order` (orden manual, mayor primero), más un índice. Es puramente aditiva: no borra ni modifica ningún objeto existente.
+- `005_catalogo_rls_opcional.sql` — **opcional**. Endurece la política RLS: la de 001 deja leer por API cualquier fila con `is_catalog = true` aunque sea borrador. No es necesaria para que el catálogo funcione, porque `getCatalogDesigns` ya filtra `is_public = true` en la consulta; solo cierra el hueco de leer borradores golpeando la API de Supabase directamente.
+
+**Storage:** las imágenes propias van al mismo bucket `designs` pero bajo `catalog/<designId>/<zona>.<ext>`, para distinguirlas de un vistazo de las subidas por clientes (`<userId>/…`). Si el insert en BD falla —o falla la subida de la 2ª zona— la action borra lo ya subido para no dejar huérfanos. Ojo al borrar: `image_path` de un item de catálogo es la **carpeta** `catalog/<id>`, no un archivo, así que hay que `list()` + `remove()` de su contenido.
+
+**Reutilizar camisas propias anteriores** (`importCatalogShirtFromExisting`): el panel ofrece un selector con las camisas que ya armó el equipo, para meterlas al catálogo sin volver a subir archivos.
+
+- **Qué cuenta como "propia":** el autor del diseño (`designs.user_id`) es un perfil con `role = 'admin'`. Se usa ese criterio y **no** el prefijo del path `admin/`, porque ese prefijo solo lo pone `/admin/pedido-gratis`: un diseño que el admin subió desde `/crear` queda bajo `<userId>/` y también es nuestro. Diseños de clientes nunca entran al pool.
+- **Copia, no muta.** Importar crea una fila NUEVA y copia los archivos (`storage.copy`) a `catalog/<nuevoId>/`. Marcar `is_catalog = true` sobre la fila original sería un error: esa fila puede estar referenciada por `order_items` (ON DELETE RESTRICT), así que mezclaría el historial de un pedido con el catálogo público y después no se podría sacar del catálogo.
+- El `source_design_id` se guarda en el `config` de la fila de catálogo, que es como `getReusableAdminDesigns` marca `alreadyInCatalog` y no ofrece dos veces la misma camisa.
+- La action **revalida el id contra el pool** en vez de confiar en lo que manda el navegador: sin eso, un admin podría copiar al catálogo el diseño de cualquier cliente pasando un id arbitrario.
+
+**Borrado:** `order_items.design_id` es `ON DELETE RESTRICT`, así que un diseño ya comprado no se puede borrar. En ese caso la action lo despublica y devuelve el mensaje explicándolo, en vez de fallar con un error de FK. Un item de catálogo importado siempre se puede borrar, porque el archivo que borra es su propia copia bajo `catalog/`.
+
+**Flujo del cliente:** tarjeta del grid → `/catalogo/<id>` → elige género, material y talla → agregar al carrito. A diferencia de `/crear`, acá **no se sube nada** al agregar al carrito: la fila de `designs` ya existe, así que el item del carrito solo la referencia por id.
 
 ### 4. Carrito (`/carrito`)
 Lista de items con preview, talla, color, precio. Botón de checkout.

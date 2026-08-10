@@ -1,3 +1,5 @@
+import type { DesignZone } from "@/types/design";
+
 export const SITE_NAME = "ARKE";
 export const SITE_TAGLINE = "Tu Diseño, Tu Estilo";
 export const SITE_DESCRIPTION =
@@ -41,11 +43,41 @@ export const PRINT_POSITIONS = [
   { label: "Pecho pequeño", value: "pecho-pequeño" },
 ] as const;
 
+/**
+ * Zonas de estampado. Fuente única de verdad: la usa el editor (/crear),
+ * el formulario del panel admin de catálogo y las tarjetas de /catalogo,
+ * para que las etiquetas no se desincronicen entre pantallas.
+ */
+export const PRINT_ZONES = [
+  {
+    key: "pechoBolsillo",
+    label: "Pecho bolsillo",
+    description: "Pequeña, arriba a la izquierda (~10×10 cm)",
+    side: "front",
+  },
+  {
+    key: "abdominalGrande",
+    label: "Pecho grande",
+    description: "Grande, centro del frente (~30×35 cm)",
+    side: "front",
+  },
+  {
+    key: "espaldaGrande",
+    label: "Espalda grande",
+    description: "Grande, centrada en la espalda (~30×35 cm)",
+    side: "back",
+  },
+] as const satisfies readonly {
+  key: DesignZone;
+  label: string;
+  description: string;
+  side: "front" | "back";
+}[];
+
 export const DESIGN_CATEGORIES = [
   { label: "Gaming", value: "gaming" },
-  { label: "Anime", value: "anime" },
-  { label: "Abstracto", value: "abstracto" },
-  { label: "Pop Culture", value: "pop" },
+  { label: "Tech", value: "tech" },
+  { label: "Espacial", value: "espacial" },
 ] as const;
 
 export const ORDER_STATUSES = {

@@ -45,7 +45,19 @@ interface TshirtPreviewProps {
   pechoUpload?: ZoneUploadHandlers;
   abdominalUpload?: ZoneUploadHandlers;
   espaldaUpload?: ZoneUploadHandlers;
+  /**
+   * Texto para un lado sin arte. El default invita a subir una imagen, que
+   * es lo correcto en el editor (/crear, constructor del admin). El
+   * catálogo pasa uno neutro: ahí la camisa es un producto terminado y el
+   * cliente no puede subir nada, así que pedírselo no tendría sentido.
+   */
+  emptyLabels?: { front: string; back: string };
 }
+
+const DEFAULT_EMPTY_LABELS = {
+  front: "Sube una imagen para el frente",
+  back: "Sube una imagen para la espalda",
+};
 
 function UploadPlaceholder({
   label,
@@ -115,6 +127,7 @@ export function TshirtPreview({
   pechoUpload,
   abdominalUpload,
   espaldaUpload,
+  emptyLabels = DEFAULT_EMPTY_LABELS,
 }: TshirtPreviewProps) {
   // Desktop and mobile layouts both mount a TshirtPreview at the same time
   // (visibility toggled via CSS, see crear/page.tsx) — a hardcoded gradient
@@ -523,13 +536,13 @@ export function TshirtPreview({
 
         {side === "front" && !hasAnyFrontImage && !pechoUpload && !abdominalUpload && (
           <div className="absolute left-1/2 top-[42%] -translate-x-1/2 text-center">
-            <p className="text-xs text-text-muted/50">Sube una imagen para el frente</p>
+            <p className="text-xs text-text-muted/50">{emptyLabels.front}</p>
           </div>
         )}
 
         {side === "back" && !hasBackImage && !espaldaUpload && (
           <div className="absolute left-1/2 top-[42%] -translate-x-1/2 text-center">
-            <p className="text-xs text-text-muted/50">Sube una imagen para la espalda</p>
+            <p className="text-xs text-text-muted/50">{emptyLabels.back}</p>
           </div>
         )}
       </div>
