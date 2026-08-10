@@ -1,25 +1,27 @@
 -- ============================================
--- OPCIONAL — endurecer RLS del catálogo
+-- Esconder los borradores del catálogo
 --
--- El catálogo funciona perfectamente sin correr esto: getCatalogDesigns
--- ya filtra is_public = true en la propia consulta, así que /catalogo
--- nunca muestra borradores.
+-- Una camisa guardada sin marcar "Publicar" (is_public = false) ya no
+-- aparece en /catalogo, porque getCatalogDesigns la filtra en la propia
+-- consulta. Pero la política de 001 deja LEER por la API de Supabase
+-- cualquier fila con is_catalog = true, publicada o no: quien consulte
+-- la API directamente, saltándose la web, alcanzaría a ver borradores.
 --
--- Lo que arregla: la política de 001 deja leer por API cualquier fila con
--- is_catalog = true, aunque sea borrador (is_public = false). O sea, un
--- diseño sin publicar no sale en la web, pero alguien que consulte la API
--- de Supabase directamente sí podría verlo.
+-- Esto lo cierra a nivel de base: para verse, ahora hay que estar
+-- publicada. El panel de admin no se ve afectado porque lee con service
+-- role, que salta RLS.
 --
--- Correr esto solo si te importa esconder los borradores. Es un DROP +
--- CREATE de política (por eso Supabase avisa "destructive"), pero no toca
--- ninguna fila y el resultado es MÁS restrictivo, nunca más permisivo.
+-- SIN DROP: usa ALTER POLICY, que reescribe la condición de la política
+-- en el lugar. No borra ni crea objetos, no toca ninguna fila.
+--
+-- El nombre de la política se deja como está ("Anyone reads catalog
+-- designs") a propósito: renombrarla no aporta nada y rompería la
+-- posibilidad de volver a correr este archivo.
 -- ============================================
 
 BEGIN;
 
-DROP POLICY IF EXISTS "Anyone reads catalog designs" ON public.designs;
-
-CREATE POLICY "Anyone reads published catalog designs" ON public.designs
-  FOR SELECT USING (is_catalog = true AND is_public = true);
+ALTER POLICY "Anyone reads catalog designs" ON public.designs
+  USING (is_catalog = true AND is_public = true);
 
 COMMIT;
