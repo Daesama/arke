@@ -22,6 +22,11 @@ import {
 export const runtime = "nodejs";
 // Nada que cachear: cada imagen es distinta.
 export const dynamic = "force-dynamic";
+// Un arranque en frío baja ~44MB de pesos antes de poder inferir. Con el
+// tope por defecto de 10s de algunas plataformas serverless, ese primer
+// pedido se cortaría a mitad de camino y el usuario vería un fallo que en
+// realidad era solo el calentamiento.
+export const maxDuration = 60;
 
 /**
  * Diagnóstico. Dice en qué escalón se rompe la segmentación del servidor sin

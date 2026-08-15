@@ -15,6 +15,9 @@ import "server-only";
  * foto de 12MP ni la devuelve, y el tráfico se mantiene chico.
  */
 
+import os from "node:os";
+import path from "node:path";
+
 import type { RawImage as RawImageType } from "@huggingface/transformers";
 
 /** Cota del lado mayor de lo que se acepta procesar. Ver SEGMENTATION_MAX_DIM. */
@@ -38,12 +41,21 @@ async function getSegmenter(): Promise<Segmenter> {
       const { pipeline, env } = await import("@huggingface/transformers");
       env.allowLocalModels = false;
 
-      // Por defecto los pesos se cachean dentro de node_modules, que un
-      // redeploy borra: el primer pedido después de cada despliegue vuelve a
-      // bajar ~44MB. Apuntando RMBG_CACHE_DIR a una carpeta persistente del
-      // VPS eso se paga una sola vez. Es opcional — sin la variable, el
-      // comportamiento es el de siempre.
-      if (process.env.RMBG_CACHE_DIR) env.cacheDir = process.env.RMBG_CACHE_DIR;
+      // Dónde se cachean los ~44MB de pesos.
+      //
+      // El default de la librería es una carpeta DENTRO de node_modules, y
+      // eso no funciona donde corre esto: en producción el proceso vive en
+      // un sistema de archivos de solo lectura y el pedido moría con
+      // "ENOENT: mkdir '/var/task/node_modules/@huggingface/transformers/
+      // .cache'". El temporal del sistema es escribible tanto en serverless
+      // (/tmp) como en un servidor propio, así que sirve para los dos.
+      //
+      // En serverless el caché dura lo que dure el contenedor: un arranque
+      // en frío vuelve a bajar los pesos. Es aceptable porque esa descarga
+      // ocurre dentro del datacenter, no sobre la red del usuario. Con
+      // RMBG_CACHE_DIR se puede apuntar a un disco persistente si lo hay.
+      env.cacheDir =
+        process.env.RMBG_CACHE_DIR ?? path.join(os.tmpdir(), "arke-rmbg-cache");
 
       return (await pipeline("image-segmentation", MODEL_ID, {
         dtype: "q8",
