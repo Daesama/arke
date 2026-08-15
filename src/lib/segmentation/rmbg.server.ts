@@ -98,20 +98,34 @@ export interface MaskResult {
  */
 export async function segmentToMaskPng(imageBytes: Uint8Array): Promise<MaskResult> {
   const { RawImage } = await import("@huggingface/transformers");
+  const sharp = (await import("sharp")).default;
 
-  const source = await RawImage.fromBlob(new Blob([imageBytes]));
+  // Se decodifica con sharp y NO con RawImage.fromBlob a propósito: en Node,
+  // fromBlob revienta con "unsupported number of channels: 4" ante cualquier
+  // imagen que traiga alfa — un PNG recortado, por ejemplo.
+  //
+  // De paso, este encadenado hace tres cosas que hay que hacer igual:
+  //  - `rotate()` sin argumentos aplica la orientación EXIF, así la máscara
+  //    no vuelve girada respecto de lo que el usuario ve;
+  //  - `flatten` aplasta el alfa contra blanco, que es lo que el modelo
+  //    espera ver como fondo;
+  //  - el `resize` impone el tope de tamaño. El cliente ya manda la imagen
+  //    capada, pero el servidor no puede confiar en eso: un pedido armado a
+  //    mano con una imagen enorme haría trabajar de más a toda la cola.
+  const { data, info } = await sharp(imageBytes)
+    .rotate()
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .resize({
+      width: MAX_INPUT_DIM,
+      height: MAX_INPUT_DIM,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
 
-  // El cliente ya manda la imagen capada, pero el servidor no puede confiar
-  // en eso: un pedido armado a mano con una imagen enorme haría trabajar de
-  // más a todo el mundo que esté en la cola.
-  const largest = Math.max(source.width, source.height);
-  const input =
-    largest > MAX_INPUT_DIM
-      ? await source.resize(
-          Math.max(1, Math.round((source.width * MAX_INPUT_DIM) / largest)),
-          Math.max(1, Math.round((source.height * MAX_INPUT_DIM) / largest)),
-        )
-      : source;
+  const input = new RawImage(new Uint8ClampedArray(data), info.width, info.height, 3);
 
   return enqueue(async () => {
     const segmenter = await getSegmenter();

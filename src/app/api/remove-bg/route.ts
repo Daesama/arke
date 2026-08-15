@@ -23,6 +23,53 @@ export const runtime = "nodejs";
 // Nada que cachear: cada imagen es distinta.
 export const dynamic = "force-dynamic";
 
+/**
+ * Diagnóstico. Dice en qué escalón se rompe la segmentación del servidor sin
+ * tener que entrar a leer los logs del VPS.
+ *
+ * Las tres respuestas posibles se leen así:
+ *  - `sharp` u `onnxruntime` en false → el VPS instaló las dependencias sin
+ *    correr sus scripts de instalación, así que los binarios nativos no
+ *    están. Se arregla en el despliegue, no en el código.
+ *  - ambas en true y `model` con error → el servidor no pudo bajar los pesos
+ *    (sin salida a huggingface.co, o disco lleno / no escribible).
+ *  - todo en true → la ruta está sana.
+ *
+ * No expone nada sensible: son capacidades del proceso, no configuración.
+ */
+export async function GET() {
+  const estado: Record<string, unknown> = {};
+
+  for (const dep of ["sharp", "onnxruntime-node"] as const) {
+    try {
+      await import(/* webpackIgnore: true */ dep);
+      estado[dep] = true;
+    } catch (err) {
+      estado[dep] = false;
+      estado[`${dep}_error`] = err instanceof Error ? err.message.slice(0, 200) : "desconocido";
+    }
+  }
+
+  try {
+    // 1x1 transparente: ejercita el camino completo (decodificar, modelo,
+    // codificar la máscara) con el trabajo más chico posible.
+    const pixel = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+      "base64",
+    );
+    const t0 = Date.now();
+    await segmentToMaskPng(new Uint8Array(pixel));
+    estado.model = true;
+    estado.model_ms = Date.now() - t0;
+  } catch (err) {
+    estado.model = false;
+    estado.model_error = err instanceof Error ? err.message.slice(0, 200) : "desconocido";
+  }
+
+  const sano = estado["sharp"] === true && estado["onnxruntime-node"] === true && estado.model === true;
+  return NextResponse.json({ sano, ...estado }, { status: sano ? 200 : 503 });
+}
+
 export async function POST(req: Request) {
   // La inferencia es cara y serializada: sin tope, un solo cliente puede
   // llenar la cola y dejar a todos los demás esperando.
