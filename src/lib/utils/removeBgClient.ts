@@ -1,9 +1,23 @@
 /**
- * Cliente del worker de quitar fondo.
+ * Cliente de quitar fondo.
  *
- * Encapsula cuatro cosas que antes no existían y que son la diferencia entre
- * "la página se congeló" y "esto está tardando, lo cancelo":
- *  1. el trabajo pesado ocurre en un worker, nunca en el hilo principal;
+ * Hay DOS formas de obtener el recorte y este módulo elige y encadena:
+ *
+ *  - **worker**: el modelo corre en el navegador, gratis y sin subir nada,
+ *    pero baja ~44MB la primera vez y depende de que el dispositivo aguante.
+ *  - **servidor**: `/api/remove-bg` devuelve la máscara. Siempre funciona,
+ *    sin descarga, a costa de subir la imagen (capada, ~150KB) y de CPU del
+ *    VPS.
+ *
+ * La regla es simple y está en `prefersServer()`: en un teléfono se va
+ * primero al servidor, en un escritorio primero al worker, y **si el
+ * elegido falla se intenta el otro**. Esa cadena es lo que hace que el
+ * usuario obtenga su recorte sin importar por qué falló el primero — un
+ * navegador sin memoria, un runtime WASM que no arranca o un CDN bloqueado
+ * dan errores distintos e irreconciliables, y ninguno se puede prever.
+ *
+ * Lo demás que encapsula:
+ *  1. el trabajo pesado nunca ocurre en el hilo principal;
  *  2. los pedidos se serializan — dos zonas a la vez competían por el mismo
  *     runtime WASM y solo lograban tardar el doble cada una;
  *  3. hay cancelación y un tope de tiempo, así que la UI no puede quedarse
@@ -13,7 +27,12 @@
  *     salía el "The source image could not be decoded".
  */
 
-import { applyAlphaMask, decodeToRgba } from "./imageProcessing";
+import {
+  applyAlphaMask,
+  applyAlphaMaskFromBlob,
+  decodeToRgba,
+  encodeCappedJpeg,
+} from "./imageProcessing";
 
 export interface BgProgress {
   /** "model" = descargando pesos (hay %); "inference" = calculando (sin %). */
@@ -79,11 +98,30 @@ function killWorker() {
 /** Cola serial: el WASM es de un solo hilo, paralelizar solo lo hace más lento. */
 let queue: Promise<unknown> = Promise.resolve();
 
+/**
+ * ¿Empezamos por el servidor?
+ *
+ * En un teléfono sí. No es solo por la memoria: aunque la inferencia local
+ * ahora entre, hacerle bajar ~44MB con datos móviles para después esperar
+ * una inferencia en WASM de un solo hilo es una espera larguísima frente a
+ * subir ~150KB y recibir la máscara. En un escritorio la cuenta se da
+ * vuelta, y además ahorra CPU del servidor.
+ *
+ * `deviceMemory` solo lo reporta Chrome; cuando no está, decide el tipo de
+ * puntero, que alcanza para distinguir un teléfono de un monitor.
+ */
+function prefersServer(): boolean {
+  if (typeof navigator === "undefined") return true;
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  if (typeof memory === "number" && memory <= 4) return true;
+  return window.matchMedia?.("(pointer: coarse)").matches ?? false;
+}
+
 export function removeBackground(
   file: File,
   options: RemoveBackgroundOptions = {},
 ): Promise<File> {
-  const run = () => runRemoveBackground(file, options);
+  const run = () => runWithFallback(file, options);
   // El .catch() mantiene viva la cadena: sin él, un pedido fallido dejaba la
   // cola rechazada y todos los siguientes se caían sin siquiera intentarlo.
   const result = queue.then(run, run);
@@ -91,7 +129,75 @@ export function removeBackground(
   return result;
 }
 
-async function runRemoveBackground(
+/**
+ * Intenta el camino preferido y, si falla, el otro.
+ *
+ * Cancelar nunca cae al respaldo: es una decisión del usuario, no una falla.
+ */
+async function runWithFallback(
+  file: File,
+  options: RemoveBackgroundOptions,
+): Promise<File> {
+  const serverFirst = prefersServer();
+  const primary = serverFirst ? runOnServer : runInWorker;
+  const secondary = serverFirst ? runInWorker : runOnServer;
+
+  try {
+    return await primary(file, options);
+  } catch (err) {
+    if (err instanceof BgRemovalCancelled || options.signal?.aborted) throw err;
+
+    console.warn(
+      `[remove-bg] Falló el camino ${serverFirst ? "servidor" : "worker"}, probando el otro:`,
+      err,
+    );
+    return await secondary(file, options);
+  }
+}
+
+/** Camino servidor: sube la imagen capada y recibe la máscara como PNG. */
+async function runOnServer(
+  file: File,
+  { onProgress, signal }: RemoveBackgroundOptions,
+): Promise<File> {
+  if (signal?.aborted) throw new BgRemovalCancelled();
+
+  // No hay descarga de modelo que reportar, pero la UI espera una señal para
+  // salir de "Preparando...": se marca inferencia directamente.
+  onProgress?.({ phase: "inference", pct: 0 });
+
+  const payload = await encodeCappedJpeg(file);
+  if (signal?.aborted) throw new BgRemovalCancelled();
+
+  let res: Response;
+  try {
+    res = await fetch("/api/remove-bg", {
+      method: "POST",
+      headers: { "Content-Type": "image/jpeg" },
+      body: payload,
+      signal,
+    });
+  } catch (err) {
+    if (signal?.aborted) throw new BgRemovalCancelled();
+    throw err instanceof Error ? err : new Error("No se pudo contactar el servidor");
+  }
+
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .then((body: { error?: string }) => body?.error)
+      .catch(() => null);
+    throw new Error(detail ?? `El servidor respondió ${res.status}`);
+  }
+
+  const maskPng = await res.blob();
+  if (signal?.aborted) throw new BgRemovalCancelled();
+
+  return applyAlphaMaskFromBlob(file, maskPng);
+}
+
+/** Camino worker: el modelo corre en el navegador del usuario. */
+async function runInWorker(
   file: File,
   { onProgress, signal }: RemoveBackgroundOptions,
 ): Promise<File> {

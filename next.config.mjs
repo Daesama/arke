@@ -8,6 +8,14 @@ const nextConfig = {
       // that or uploads silently hang instead of erroring.
       bodySizeLimit: "35mb",
     },
+    // La segmentación del servidor (/api/remove-bg) usa binarios nativos:
+    // webpack no puede empaquetarlos, tiene que dejarlos como require() en
+    // tiempo de ejecución.
+    serverComponentsExternalPackages: [
+      "@huggingface/transformers",
+      "onnxruntime-node",
+      "sharp",
+    ],
   },
   images: {
     remotePatterns: [
@@ -15,12 +23,17 @@ const nextConfig = {
       { protocol: "https", hostname: "fal.media" },
     ],
   },
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      "sharp$": false,
-      "onnxruntime-node$": false,
-    };
+  webpack: (config, { isServer }) => {
+    // Ojo: SOLO en el bundle del cliente. Antes esto se aplicaba también al
+    // build del servidor, lo que dejaba a /api/remove-bg sin onnxruntime-node
+    // ni sharp — es decir, sin forma de correr el modelo.
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "sharp$": false,
+        "onnxruntime-node$": false,
+      };
+    }
     return config;
   },
   async headers() {

@@ -133,6 +133,50 @@ export async function downscaleImageFile(
   }
 }
 
+/**
+ * Codifica la imagen capada a `maxDim` como JPEG, para mandarla al servidor.
+ *
+ * JPEG y no PNG porque esto viaja por la red del usuario: una foto capada a
+ * 1024px son ~150KB en JPEG contra más de 1MB en PNG. Se pierde el alfa, que
+ * al modelo no le hace falta — lo que se le pide es justamente que decida
+ * qué es fondo.
+ */
+export async function encodeCappedJpeg(
+  file: File,
+  maxDim: number = SEGMENTATION_MAX_DIM,
+): Promise<Blob> {
+  const img = await decodeImage(file);
+
+  try {
+    const { width, height } = dimsOf(img);
+    if (!width || !height) throw new Error("La imagen no tiene dimensiones válidas");
+
+    const scale = Math.min(1, maxDim / Math.max(width, height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("No se pudo preparar el lienzo");
+
+    // Fondo blanco antes de dibujar: si la imagen trae alfa, JPEG lo
+    // aplastaría contra negro y el modelo vería un borde falso.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("No se pudo preparar la imagen"))),
+        "image/jpeg",
+        0.9,
+      );
+    });
+  } finally {
+    release(img);
+  }
+}
+
 export interface DecodedRgba {
   data: Uint8ClampedArray;
   width: number;
@@ -198,6 +242,46 @@ export async function applyAlphaMask(
   maskWidth: number,
   maskHeight: number,
 ): Promise<File> {
+  return compositeWithMask(file, maskWidth, maskHeight, (maskCtx) => {
+    // Máscara → canvas con la opacidad en el canal alfa. Este es el único
+    // bucle por píxel del proceso y corre sobre la máscara (≤1024² ≈ 1M),
+    // no sobre la imagen (hasta 2048² ≈ 4.2M). El cap de `decodeToRgba` es
+    // lo que sostiene esa cuenta: sin él la máscara vuelve del tamaño de la
+    // foto original y este bucle es el que congela la página.
+    const maskData = maskCtx.createImageData(maskWidth, maskHeight);
+    for (let i = 0; i < mask.length; i++) {
+      maskData.data[i * 4 + 3] = mask[i];
+    }
+    maskCtx.putImageData(maskData, 0, 0);
+  });
+}
+
+/**
+ * Igual que `applyAlphaMask`, pero para la máscara que devuelve el servidor.
+ *
+ * Ese PNG ya trae la máscara en su canal alfa, así que se dibuja directo y
+ * no hay ni un bucle por píxel de este lado.
+ */
+export async function applyAlphaMaskFromBlob(file: File, maskPng: Blob): Promise<File> {
+  const maskImg = await decodeImage(maskPng);
+  const { width: mw, height: mh } = dimsOf(maskImg);
+
+  try {
+    return await compositeWithMask(file, mw, mh, (maskCtx) => {
+      maskCtx.drawImage(maskImg, 0, 0);
+    });
+  } finally {
+    release(maskImg);
+  }
+}
+
+/** Tronco común: pinta la imagen, pinta la máscara y recorta con `destination-in`. */
+async function compositeWithMask(
+  file: File,
+  maskWidth: number,
+  maskHeight: number,
+  paintMask: (maskCtx: CanvasRenderingContext2D) => void,
+): Promise<File> {
   const img = await decodeImage(file);
 
   try {
@@ -211,22 +295,13 @@ export async function applyAlphaMask(
     if (!ctx) throw new Error("No se pudo preparar el lienzo");
     ctx.drawImage(img, 0, 0, width, height);
 
-    // Máscara → canvas con la opacidad en el canal alfa. Este es el único
-    // bucle por píxel del proceso y corre sobre la máscara (≤1024² ≈ 1M),
-    // no sobre la imagen (hasta 2048² ≈ 4.2M). El cap de `decodeToRgba` es
-    // lo que sostiene esa cuenta: sin él la máscara vuelve del tamaño de la
-    // foto original y este bucle es el que congela la página.
     const maskCanvas = document.createElement("canvas");
     maskCanvas.width = maskWidth;
     maskCanvas.height = maskHeight;
     const maskCtx = maskCanvas.getContext("2d");
     if (!maskCtx) throw new Error("No se pudo preparar la máscara");
 
-    const maskData = maskCtx.createImageData(maskWidth, maskHeight);
-    for (let i = 0; i < mask.length; i++) {
-      maskData.data[i * 4 + 3] = mask[i];
-    }
-    maskCtx.putImageData(maskData, 0, 0);
+    paintMask(maskCtx);
 
     ctx.imageSmoothingQuality = "high";
     ctx.globalCompositeOperation = "destination-in";

@@ -71,6 +71,16 @@ function getSegmenter(onModelProgress) {
         dtype: "q8",
         device: "wasm",
         progress_callback: onModelProgress,
+        // Lo que hace viable esto en un celular. Medido en el mismo modelo:
+        // con el arena de memoria por defecto una inferencia pide ~776MB de
+        // pico; sin él, ~69MB. Once veces menos, a cambio de ~35% más de
+        // tiempo. En un desktop la diferencia no se nota; en un teléfono es
+        // la diferencia entre andar y que el navegador mate la pestaña.
+        session_options: {
+          enableCpuMemArena: false,
+          enableMemPattern: false,
+          executionMode: "sequential",
+        },
       });
     })().catch((err) => {
       // Un fallo de carga no puede dejar la promesa cacheada en estado
