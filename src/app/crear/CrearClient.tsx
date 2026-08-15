@@ -88,6 +88,7 @@ export function CrearClient() {
     handleFileSelect,
     handleRemove,
     handleRemoveBg,
+    handleCancelBg,
     handleRestoreBg,
   } = useDesignZones();
 
@@ -375,7 +376,9 @@ export function CrearClient() {
                   disabled={isUploading}
                   onRemoveBg={() => handleRemoveBg(zone.key)}
                   onRestoreBg={() => handleRestoreBg(zone.key)}
+                  onCancelBg={() => handleCancelBg(zone.key)}
                   bgRemovalStatus={zones[zone.key].bgRemovalStatus}
+                  bgRemovalProgress={zones[zone.key].bgRemovalProgress}
                   hasBgRemoved={zones[zone.key].bgRemovalStatus === "done"}
                   bgRemovalError={zones[zone.key].bgRemovalError}
                 />
@@ -509,7 +512,9 @@ export function CrearClient() {
               onRemove: () => handleRemove("pechoBolsillo"),
               onRemoveBg: () => handleRemoveBg("pechoBolsillo"),
               onRestoreBg: () => handleRestoreBg("pechoBolsillo"),
+              onCancelBg: () => handleCancelBg("pechoBolsillo"),
               bgStatus: zones.pechoBolsillo.bgRemovalStatus,
+              bgProgress: zones.pechoBolsillo.bgRemovalProgress,
               bgError: zones.pechoBolsillo.bgRemovalError,
               disabled: isUploading,
             }}
@@ -518,7 +523,9 @@ export function CrearClient() {
               onRemove: () => handleRemove("abdominalGrande"),
               onRemoveBg: () => handleRemoveBg("abdominalGrande"),
               onRestoreBg: () => handleRestoreBg("abdominalGrande"),
+              onCancelBg: () => handleCancelBg("abdominalGrande"),
               bgStatus: zones.abdominalGrande.bgRemovalStatus,
+              bgProgress: zones.abdominalGrande.bgRemovalProgress,
               bgError: zones.abdominalGrande.bgRemovalError,
               disabled: isUploading,
             }}
@@ -527,7 +534,9 @@ export function CrearClient() {
               onRemove: () => handleRemove("espaldaGrande"),
               onRemoveBg: () => handleRemoveBg("espaldaGrande"),
               onRestoreBg: () => handleRestoreBg("espaldaGrande"),
+              onCancelBg: () => handleCancelBg("espaldaGrande"),
               bgStatus: zones.espaldaGrande.bgRemovalStatus,
+              bgProgress: zones.espaldaGrande.bgRemovalProgress,
               bgError: zones.espaldaGrande.bgRemovalError,
               disabled: isUploading,
             }}

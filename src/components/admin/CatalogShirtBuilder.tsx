@@ -46,6 +46,7 @@ export function CatalogShirtBuilder({ onCancel }: { onCancel: () => void }) {
     handleFileSelect,
     handleRemove,
     handleRemoveBg,
+    handleCancelBg,
     handleRestoreBg,
   } = useDesignZones();
 
@@ -132,7 +133,9 @@ export function CatalogShirtBuilder({ onCancel }: { onCancel: () => void }) {
               onRemove: () => handleRemove("pechoBolsillo"),
               onRemoveBg: () => handleRemoveBg("pechoBolsillo"),
               onRestoreBg: () => handleRestoreBg("pechoBolsillo"),
+              onCancelBg: () => handleCancelBg("pechoBolsillo"),
               bgStatus: zones.pechoBolsillo.bgRemovalStatus,
+              bgProgress: zones.pechoBolsillo.bgRemovalProgress,
               bgError: zones.pechoBolsillo.bgRemovalError,
               disabled: saving,
             }}
@@ -141,7 +144,9 @@ export function CatalogShirtBuilder({ onCancel }: { onCancel: () => void }) {
               onRemove: () => handleRemove("abdominalGrande"),
               onRemoveBg: () => handleRemoveBg("abdominalGrande"),
               onRestoreBg: () => handleRestoreBg("abdominalGrande"),
+              onCancelBg: () => handleCancelBg("abdominalGrande"),
               bgStatus: zones.abdominalGrande.bgRemovalStatus,
+              bgProgress: zones.abdominalGrande.bgRemovalProgress,
               bgError: zones.abdominalGrande.bgRemovalError,
               disabled: saving,
             }}
@@ -150,7 +155,9 @@ export function CatalogShirtBuilder({ onCancel }: { onCancel: () => void }) {
               onRemove: () => handleRemove("espaldaGrande"),
               onRemoveBg: () => handleRemoveBg("espaldaGrande"),
               onRestoreBg: () => handleRestoreBg("espaldaGrande"),
+              onCancelBg: () => handleCancelBg("espaldaGrande"),
               bgStatus: zones.espaldaGrande.bgRemovalStatus,
+              bgProgress: zones.espaldaGrande.bgRemovalProgress,
               bgError: zones.espaldaGrande.bgRemovalError,
               disabled: saving,
             }}

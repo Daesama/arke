@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -8,8 +8,9 @@ import { ImageUploadZone } from "@/components/design/ImageUploadZone";
 import { TshirtPreview } from "@/components/design/TshirtPreview";
 import { Gift, CheckCircle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { useDesignZones } from "@/hooks/useDesignZones";
 import { createFreeOrder } from "./actions";
-import type { DesignZone, ZoneTransform } from "@/types/design";
+import type { DesignZone } from "@/types/design";
 import type { TshirtGenero, TshirtMaterial } from "@/types/database";
 
 const MATERIALES: { value: TshirtMaterial; label: string }[] = [
@@ -51,28 +52,34 @@ const LOCALIDADES_BOGOTA = [
   "Rafael Uribe Uribe", "Ciudad Bolívar", "Sumapaz",
 ];
 
-type BgRemovalStatus = "idle" | "processing" | "done" | "error";
-
-interface ZoneState {
-  file: File | null;
-  preview: string | null;
-  originalFile: File | null;
-  originalPreview: string | null;
-  bgRemovalStatus: BgRemovalStatus;
-  bgRemovalError: string | null;
-}
-
 export default function PedidoGratisPage() {
   const [material, setMaterial] = useState<TshirtMaterial | "">("");
   const [genero, setGenero] = useState<TshirtGenero | "">("");
   const [color, setColor] = useState("negro");
   const [talla, setTalla] = useState("");
-  const emptyZone: ZoneState = { file: null, preview: null, originalFile: null, originalPreview: null, bgRemovalStatus: "idle", bgRemovalError: null };
-  const [zones, setZones] = useState<Record<DesignZone, ZoneState>>({
-    pechoBolsillo: { ...emptyZone },
-    abdominalGrande: { ...emptyZone },
-    espaldaGrande: { ...emptyZone },
-  });
+
+  // Mismo manejo de imágenes que /crear y el constructor de catálogo: worker
+  // para quitar fondo, downscale automático, cancelación. Esta página tenía
+  // su propia copia que corría el modelo en el hilo principal y congelaba el
+  // navegador; no había ninguna razón para que fuera distinta.
+  const {
+    zones,
+    previews: previewZones,
+    hasAnyImage,
+    pechoTransform,
+    setPechoTransform,
+    abdominalTransform,
+    setAbdominalTransform,
+    espaldaTransform,
+    setEspaldaTransform,
+    handleFileSelect,
+    handleRemove,
+    handleRemoveBg,
+    handleCancelBg,
+    handleRestoreBg,
+    resetZones,
+  } = useDesignZones();
+
   const [shipping, setShipping] = useState({
     name: "",
     phone: "",
@@ -82,150 +89,12 @@ export default function PedidoGratisPage() {
     notes: "",
   });
   const [previewSide, setPreviewSide] = useState<"front" | "back">("front");
-  const [pechoTransform, setPechoTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
-  const [abdominalTransform, setAbdominalTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
-  const [espaldaTransform, setEspaldaTransform] = useState<ZoneTransform>({ offsetX: 0, offsetY: 0, scale: 1 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<number | null>(null);
 
   const selectedColor = COLORES.find((c) => c.slug === color)?.value ?? "#1a1a1a";
-  const previewZones = {
-    pechoBolsillo: zones.pechoBolsillo.preview,
-    abdominalGrande: zones.abdominalGrande.preview,
-    espaldaGrande: zones.espaldaGrande.preview,
-  };
 
-  function handleFileSelect(zone: DesignZone, file: File) {
-    const url = URL.createObjectURL(file);
-    setZones((prev) => {
-      if (prev[zone].preview) URL.revokeObjectURL(prev[zone].preview!);
-      if (prev[zone].originalPreview) URL.revokeObjectURL(prev[zone].originalPreview!);
-      return {
-        ...prev,
-        [zone]: { file, preview: url, originalFile: null, originalPreview: null, bgRemovalStatus: "idle" as BgRemovalStatus, bgRemovalError: null },
-      };
-    });
-  }
-
-  function handleRemove(zone: DesignZone) {
-    if (zones[zone].preview) URL.revokeObjectURL(zones[zone].preview!);
-    if (zones[zone].originalPreview) URL.revokeObjectURL(zones[zone].originalPreview!);
-    setZones((prev) => ({
-      ...prev,
-      [zone]: { ...emptyZone },
-    }));
-  }
-
-  const handleRemoveBg = useCallback(async (zone: DesignZone) => {
-    const zoneState = zones[zone];
-    if (!zoneState.file) return;
-
-    setZones((prev) => ({
-      ...prev,
-      [zone]: { ...prev[zone], bgRemovalStatus: "processing" as BgRemovalStatus, bgRemovalError: null },
-    }));
-
-    try {
-      // @ts-expect-error -- CDN import bypasses webpack bundling to avoid WASM/import.meta issues
-      const { pipeline, env, RawImage } = await import(/* webpackIgnore: true */ "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3");
-      env.allowLocalModels = false;
-
-      const segmenter = await pipeline("image-segmentation", "briaai/RMBG-1.4", {
-        device: "wasm",
-        dtype: "q8",
-      });
-
-      const imgUrl = URL.createObjectURL(zoneState.file!);
-      const output = await segmenter(imgUrl, { threshold: 0 });
-      URL.revokeObjectURL(imgUrl);
-
-      const img = await RawImage.fromBlob(zoneState.file!);
-      const rawMask = output[0].mask;
-      const mask = (rawMask.width !== img.width || rawMask.height !== img.height)
-        ? rawMask.resize(img.width, img.height)
-        : rawMask;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d")!;
-      const imageData = ctx.createImageData(img.width, img.height);
-
-      for (let i = 0; i < img.width * img.height; i++) {
-        const ch = img.channels;
-        imageData.data[i * 4] = img.data[i * ch];
-        imageData.data[i * 4 + 1] = img.data[i * ch + 1];
-        imageData.data[i * 4 + 2] = img.data[i * ch + 2];
-        imageData.data[i * 4 + 3] = mask.data[i];
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-
-      // Cap output resolution — an uncompressed alpha PNG at full phone-camera
-      // resolution can hit tens of MB and blow past upload limits. 3000px is
-      // still well above what's needed for a ~35cm print at print quality.
-      const MAX_DIM = 3000;
-      let outputCanvas: HTMLCanvasElement = canvas;
-      if (canvas.width > MAX_DIM || canvas.height > MAX_DIM) {
-        const scale = MAX_DIM / Math.max(canvas.width, canvas.height);
-        const resized = document.createElement("canvas");
-        resized.width = Math.round(canvas.width * scale);
-        resized.height = Math.round(canvas.height * scale);
-        resized.getContext("2d")!.drawImage(canvas, 0, 0, resized.width, resized.height);
-        outputCanvas = resized;
-      }
-
-      const blob = await new Promise<Blob>((resolve) =>
-        outputCanvas.toBlob((b) => resolve(b!), "image/png")
-      );
-
-      const newFile = new File([blob], zoneState.file!.name.replace(/\.\w+$/, ".png"), { type: "image/png" });
-      const newPreview = URL.createObjectURL(blob);
-      setZones((prev) => ({
-        ...prev,
-        [zone]: {
-          file: newFile,
-          preview: newPreview,
-          originalFile: prev[zone].originalFile ?? prev[zone].file,
-          originalPreview: prev[zone].originalPreview ?? prev[zone].preview,
-          bgRemovalStatus: "done" as BgRemovalStatus,
-          bgRemovalError: null,
-        },
-      }));
-    } catch (err) {
-      console.error("[remove-bg] Error:", err);
-      setZones((prev) => ({
-        ...prev,
-        [zone]: {
-          ...prev[zone],
-          bgRemovalStatus: "error" as BgRemovalStatus,
-          bgRemovalError: `Error al quitar el fondo: ${err instanceof Error ? err.message : "error desconocido"}`,
-        },
-      }));
-    }
-  }, [zones]);
-
-  const handleRestoreBg = useCallback((zone: DesignZone) => {
-    setZones((prev) => {
-      const z = prev[zone];
-      if (!z.originalFile || !z.originalPreview) return prev;
-      if (z.preview) URL.revokeObjectURL(z.preview);
-      return {
-        ...prev,
-        [zone]: {
-          file: z.originalFile,
-          preview: z.originalPreview,
-          originalFile: null,
-          originalPreview: null,
-          bgRemovalStatus: "idle" as BgRemovalStatus,
-          bgRemovalError: null,
-        },
-      };
-    });
-  }, []);
-
-  const hasAnyImage = Object.values(zones).some((z) => z.file);
   const canSubmit = material && genero && talla && hasAnyImage &&
     shipping.name && shipping.phone && shipping.address &&
     shipping.barrio && shipping.localidad;
@@ -275,19 +144,11 @@ export default function PedidoGratisPage() {
   }
 
   function handleReset() {
-    Object.values(zones).forEach((z) => {
-      if (z.preview) URL.revokeObjectURL(z.preview);
-      if (z.originalPreview) URL.revokeObjectURL(z.originalPreview);
-    });
     setMaterial("");
     setGenero("");
     setColor("negro");
     setTalla("");
-    setZones({
-      pechoBolsillo: { ...emptyZone },
-      abdominalGrande: { ...emptyZone },
-      espaldaGrande: { ...emptyZone },
-    });
+    resetZones();
     setShipping({ name: "", phone: "", address: "", barrio: "", localidad: "", notes: "" });
     setError(null);
     setSuccess(null);
@@ -470,7 +331,9 @@ export default function PedidoGratisPage() {
                     onRemove={() => handleRemove(zone.key)}
                     onRemoveBg={() => handleRemoveBg(zone.key)}
                     onRestoreBg={() => handleRestoreBg(zone.key)}
+                    onCancelBg={() => handleCancelBg(zone.key)}
                     bgRemovalStatus={zones[zone.key].bgRemovalStatus}
+                    bgRemovalProgress={zones[zone.key].bgRemovalProgress}
                     hasBgRemoved={zones[zone.key].bgRemovalStatus === "done"}
                     bgRemovalError={zones[zone.key].bgRemovalError}
                   />

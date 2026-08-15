@@ -3,6 +3,7 @@
 import { useRef, useCallback, useState, useId } from "react";
 import { cn } from "@/lib/utils/cn";
 import { RotateCcw, Move, Minus, Plus, Upload, X, Loader2, Undo2, Eraser } from "lucide-react";
+import { bgProgressLabel, type BgProgress } from "@/lib/utils/removeBgClient";
 import type { ZoneTransform, BgRemovalStatus } from "@/types/design";
 
 interface ZoneImages {
@@ -16,7 +17,9 @@ interface ZoneUploadHandlers {
   onRemove: () => void;
   onRemoveBg?: () => void;
   onRestoreBg?: () => void;
+  onCancelBg?: () => void;
   bgStatus?: BgRemovalStatus;
+  bgProgress?: BgProgress | null;
   bgError?: string | null;
   disabled?: boolean;
 }
@@ -294,18 +297,34 @@ export function TshirtPreview({
       )}
 
       {/*
-        touch-none (touch-action: none) below and on each draggable zone is
-        required for a usable drag on touch devices: without it, the browser
-        treats a finger-down-and-move here as a page-scroll gesture and the
-        image drag loses the touch mid-gesture. The Move badge on each image
-        is also marked pointer-events-none so a touch starting exactly on
-        that little overlay hits the zone div underneath instead of the
-        badge — one consistent drag target instead of two nested ones with
-        their own touch-action/pointer-capture edge cases.
+        touch-action is deliberately split between this container and the
+        draggable zones inside it, and the split matters on mobile:
+
+        - Each draggable image keeps touch-none (touch-action: none) because
+          without it the browser treats finger-down-and-move as a page scroll
+          and the drag loses the touch mid-gesture.
+        - This container must NOT be touch-none. It used to be, and since the
+          shirt fills most of the phone screen that turned the whole preview
+          into a dead zone: a finger landing anywhere on the shirt — even on
+          bare fabric with nothing to drag — scrolled nothing, and the user got
+          stuck mid-page with no way out. pan-y lets those touches scroll the
+          page normally; pinch-zoom keeps browser zoom available.
+
+        Because touch-action is resolved from the element hit at touch-start,
+        a touch that begins on an image still gets none (drag works) while a
+        touch that begins on fabric or on an upload placeholder gets pan-y
+        (scroll works). The Move badge on each image is also marked
+        pointer-events-none so a touch starting exactly on that little overlay
+        hits the zone div underneath instead of the badge — one consistent drag
+        target instead of two nested ones with their own touch-action /
+        pointer-capture edge cases.
       */}
       <div
         ref={containerRef}
-        className={cn("relative aspect-[3/4] w-full touch-none", !captureMode && "max-w-[320px]")}
+        className={cn(
+          "relative aspect-[3/4] w-full touch-pan-y touch-pinch-zoom",
+          !captureMode && "max-w-[320px]",
+        )}
         onWheel={handleWheel}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -595,37 +614,57 @@ export function TshirtPreview({
                   went unnoticed, and quitar fondo is a feature worth
                   surfacing plainly rather than making users discover it.
                 */}
-                {c.upload?.onRemoveBg && (
-                  <button
-                    type="button"
-                    onClick={bgDone ? c.upload.onRestoreBg : c.upload.onRemoveBg}
-                    disabled={bgProcessing || c.upload.disabled}
-                    className={cn(
-                      "flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-200",
-                      bgDone
-                        ? "border-violet/25 bg-violet/5 text-violet hover:border-violet/40 hover:bg-violet/10"
-                        : bgError
-                          ? "border-magenta/30 bg-magenta/5 text-magenta"
-                          : "border-cyan/25 bg-cyan/5 text-cyan hover:border-cyan/40 hover:bg-cyan/10",
-                    )}
-                    aria-label={bgDone ? `Restaurar fondo de ${c.label}` : `Quitar fondo de ${c.label}`}
-                  >
-                    {bgProcessing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : bgDone ? (
-                      <Undo2 className="h-3.5 w-3.5" />
-                    ) : (
-                      <Eraser className="h-3.5 w-3.5" />
-                    )}
-                    {bgProcessing
-                      ? "Quitando fondo..."
-                      : bgDone
+                {c.upload?.onRemoveBg &&
+                  (bgProcessing ? (
+                    /*
+                      Este es el camino de mobile, donde el problema dolía: el
+                      modelo tarda, y sin porcentaje ni salida el usuario no
+                      distingue "está trabajando" de "se colgó". Cancelar mata
+                      el worker y devuelve el editor al instante.
+                    */
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-cyan/30 bg-cyan/5 px-3 py-2 text-xs font-medium text-cyan">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {bgProgressLabel(c.upload.bgProgress ?? null)}
+                      </div>
+                      {c.upload.onCancelBg && (
+                        <button
+                          type="button"
+                          onClick={c.upload.onCancelBg}
+                          className="shrink-0 rounded-lg border border-elevated px-2.5 py-2 text-[10px] font-medium text-text-secondary transition-colors hover:border-magenta/40 hover:text-magenta"
+                          aria-label={`Cancelar quitar fondo de ${c.label}`}
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={bgDone ? c.upload.onRestoreBg : c.upload.onRemoveBg}
+                      disabled={c.upload.disabled}
+                      className={cn(
+                        "flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-200",
+                        bgDone
+                          ? "border-violet/25 bg-violet/5 text-violet hover:border-violet/40 hover:bg-violet/10"
+                          : bgError
+                            ? "border-magenta/30 bg-magenta/5 text-magenta"
+                            : "border-cyan/25 bg-cyan/5 text-cyan hover:border-cyan/40 hover:bg-cyan/10",
+                      )}
+                      aria-label={bgDone ? `Restaurar fondo de ${c.label}` : `Quitar fondo de ${c.label}`}
+                    >
+                      {bgDone ? (
+                        <Undo2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eraser className="h-3.5 w-3.5" />
+                      )}
+                      {bgDone
                         ? "Restaurar fondo original"
                         : bgError
                           ? "Reintentar quitar fondo"
                           : "Quitar fondo"}
-                  </button>
-                )}
+                    </button>
+                  ))}
                 {bgError && c.upload?.bgError && (
                   <p className="px-1 text-[10px] text-magenta/80">{c.upload.bgError}</p>
                 )}

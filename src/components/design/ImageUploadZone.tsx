@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { Upload, X, Loader2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { bgProgressLabel, type BgProgress } from "@/lib/utils/removeBgClient";
 
 interface ImageUploadZoneProps {
   label: string;
@@ -13,7 +14,9 @@ interface ImageUploadZoneProps {
   disabled?: boolean;
   onRemoveBg?: () => void;
   onRestoreBg?: () => void;
+  onCancelBg?: () => void;
   bgRemovalStatus?: "idle" | "processing" | "done" | "error";
+  bgRemovalProgress?: BgProgress | null;
   hasBgRemoved?: boolean;
   bgRemovalError?: string | null;
 }
@@ -28,7 +31,9 @@ export function ImageUploadZone({
   disabled,
   onRemoveBg,
   onRestoreBg,
+  onCancelBg,
   bgRemovalStatus = "idle",
+  bgRemovalProgress = null,
   hasBgRemoved = false,
   bgRemovalError,
 }: ImageUploadZoneProps) {
@@ -116,30 +121,42 @@ export function ImageUploadZone({
               <Undo2 className="h-3.5 w-3.5" />
               Restaurar fondo original
             </button>
+          ) : isProcessing ? (
+            /*
+              Mientras procesa, el botón deja de ser un botón: pasa a ser
+              estado + salida. Antes acá solo había un spinner con "Quitando
+              fondo...", y como el trabajo bloqueaba el hilo principal, el
+              usuario no tenía forma de saber si faltaba poco ni de salirse.
+            */
+            <div className="flex items-center gap-1.5">
+              <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-cyan/30 bg-cyan/5 px-3 py-2 text-xs font-medium text-cyan">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {bgProgressLabel(bgRemovalProgress)}
+              </div>
+              {onCancelBg && (
+                <button
+                  type="button"
+                  onClick={onCancelBg}
+                  className="shrink-0 rounded-lg border border-elevated px-2.5 py-2 text-[10px] font-medium text-text-secondary transition-colors hover:border-magenta/40 hover:text-magenta"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
           ) : (
             <button
               type="button"
               onClick={onRemoveBg}
-              disabled={isProcessing || disabled}
+              disabled={disabled}
               className={cn(
                 "flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-200",
                 hasError
                   ? "border-magenta/30 bg-magenta/5 text-magenta"
-                  : isProcessing
-                    ? "border-cyan/30 bg-cyan/5 text-cyan"
-                    : "border-cyan/25 bg-cyan/5 text-cyan hover:border-cyan/40 hover:bg-cyan/10 hover:shadow-[0_0_12px_rgba(0,240,255,0.1)]",
+                  : "border-cyan/25 bg-cyan/5 text-cyan hover:border-cyan/40 hover:bg-cyan/10 hover:shadow-[0_0_12px_rgba(0,240,255,0.1)]",
               )}
             >
-              {isProcessing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <span className="text-sm leading-none">&#9986;</span>
-              )}
-              {isProcessing
-                ? "Quitando fondo..."
-                : hasError
-                  ? "Reintentar quitar fondo"
-                  : "Quitar fondo"}
+              <span className="text-sm leading-none">&#9986;</span>
+              {hasError ? "Reintentar quitar fondo" : "Quitar fondo"}
             </button>
           )}
           {hasError && bgRemovalError && (
