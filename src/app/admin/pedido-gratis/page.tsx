@@ -437,7 +437,7 @@ export default function PedidoGratisPage() {
 
           <div className="mt-6 rounded-lg border border-violet/20 bg-violet/[0.06] px-4 py-3">
             <p className="text-xs text-violet">
-              Este pedido se creará con total $0 y estado "pagado". No pasará por Wompi.
+              Este pedido se creará con total $0 y estado &ldquo;pagado&rdquo;. No pasará por Wompi.
             </p>
           </div>
 
