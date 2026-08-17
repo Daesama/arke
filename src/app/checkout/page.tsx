@@ -17,11 +17,13 @@ import {
   ShieldCheck,
   LogIn,
   UserPlus,
+  Tag,
+  X,
 } from "lucide-react";
 import Script from "next/script";
 import { cn } from "@/lib/utils/cn";
 import { formatCOP, getActiveZonesFromConfig, getDesglose, ENVIO } from "@/lib/utils/pricing";
-import { createOrder, saveOrderAssets } from "./actions";
+import { createOrder, saveOrderAssets, validarCodigoDescuento } from "./actions";
 import { captureElement } from "@/lib/utils/capturePreview";
 import type { DesignZoneConfig } from "@/types/design";
 
@@ -63,6 +65,12 @@ interface ShippingData {
   notes: string;
 }
 
+interface AppliedCode {
+  code: string;
+  amount: number;
+  label: string;
+}
+
 function getZonesFromConfig(config?: DesignZoneConfig) {
   return {
     pechoBolsillo:
@@ -91,6 +99,10 @@ export default function CheckoutPage() {
     localidad: "",
     notes: "",
   });
+  const [codeInput, setCodeInput] = useState("");
+  const [appliedCode, setAppliedCode] = useState<AppliedCode | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeLoading, setCodeLoading] = useState(false);
 
   useEffect(() => {
     createClient()
@@ -100,7 +112,39 @@ export default function CheckoutPage() {
 
 
   const subtotal = totalPrice();
-  const total = subtotal + ENVIO;
+  const descuento = appliedCode?.amount ?? 0;
+  const total = subtotal + ENVIO - descuento;
+
+  async function aplicarCodigo() {
+    if (!codeInput.trim() || codeLoading) return;
+    setCodeLoading(true);
+    setCodeError(null);
+
+    try {
+      const res = await validarCodigoDescuento(codeInput, subtotal);
+      if (res.error || !res.code) {
+        setAppliedCode(null);
+        setCodeError(res.error ?? "Código inválido.");
+      } else {
+        setAppliedCode({
+          code: res.code,
+          amount: res.amount ?? 0,
+          label: res.label ?? "",
+        });
+        setCodeInput("");
+      }
+    } catch {
+      setCodeError("No pudimos validar el código. Intenta de nuevo.");
+    } finally {
+      setCodeLoading(false);
+    }
+  }
+
+  function quitarCodigo() {
+    setAppliedCode(null);
+    setCodeError(null);
+    setCodeInput("");
+  }
 
   function updateField(field: keyof ShippingData, value: string) {
     setShipping((prev) => ({ ...prev, [field]: value }));
@@ -225,7 +269,7 @@ export default function CheckoutPage() {
 
       let result;
       try {
-        result = await createOrder(shipping, cartItems);
+        result = await createOrder(shipping, cartItems, appliedCode?.code);
 
       } catch (err) {
         console.error("[Checkout] Paso 2 ERROR: Fallo creando pedido:", err);
@@ -285,21 +329,25 @@ export default function CheckoutPage() {
       // ── Paso 4: Obtener firma de integridad ──
       setProcessingStep("Conectando con Wompi...");
 
-      const { reference, amountInCents } = result;
+      const { reference } = result;
 
       const sigRes = await fetch("/api/wompi/sign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference, amountInCents }),
+        body: JSON.stringify({ reference }),
       });
       const sigData = await sigRes.json();
 
-      if (!sigData.signature) {
+      if (!sigData.signature || !sigData.amountInCents) {
         setError("Error al generar firma de pago. Intenta de nuevo.");
         setStep(2);
         setLoading(false);
         return;
       }
+
+      // El monto lo manda el servidor junto con la firma: es el de la
+      // fila de orders, no el que quedó calculado en el navegador.
+      const amountInCents: number = sigData.amountInCents;
 
       // ── Paso 5: Abrir Widget de Wompi ──
       setProcessingStep("Abriendo pasarela de pago...");
@@ -640,6 +688,75 @@ export default function CheckoutPage() {
             </div>
           </Card>
 
+          {/* Código de descuento */}
+          <Card>
+            {appliedCode ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="rounded-lg bg-cyan/[0.08] p-2">
+                    <Tag className="h-4 w-4 text-cyan" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-sm text-cyan">
+                      {appliedCode.code}
+                    </p>
+                    <p className="text-[11px] text-text-muted">
+                      Código aplicado · {appliedCode.label}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={quitarCodigo}
+                  aria-label="Quitar código de descuento"
+                  className="shrink-0 rounded-lg p-2 text-text-muted transition-colors hover:text-magenta"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label
+                  htmlFor="codigo"
+                  className="block text-[11px] font-medium uppercase tracking-wider text-text-muted"
+                >
+                  ¿Tienes un código?
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="codigo"
+                    value={codeInput}
+                    onChange={(e) => {
+                      setCodeInput(e.target.value.toUpperCase());
+                      setCodeError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        aplicarCodigo();
+                      }
+                    }}
+                    placeholder="TUCODIGO"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    className="w-full rounded-lg border border-elevated/60 bg-deep/80 px-4 py-3 font-mono text-sm uppercase tracking-wider text-text-primary backdrop-blur-sm transition-all duration-300 placeholder:tracking-normal placeholder:text-text-muted/60 focus:border-cyan/50 focus:outline-none focus:ring-2 focus:ring-cyan/20"
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={aplicarCodigo}
+                    isLoading={codeLoading}
+                    disabled={!codeInput.trim()}
+                  >
+                    Aplicar
+                  </Button>
+                </div>
+                {codeError && (
+                  <p className="text-[12px] text-magenta">{codeError}</p>
+                )}
+              </div>
+            )}
+          </Card>
+
           {/* Price breakdown */}
           <Card>
             <div className="space-y-3">
@@ -651,6 +768,16 @@ export default function CheckoutPage() {
                 <span className="text-text-muted">Envío Bogotá</span>
                 <span className="font-mono text-text-muted">{formatCOP(ENVIO)}</span>
               </div>
+              {appliedCode && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-cyan">
+                    Descuento ({appliedCode.code})
+                  </span>
+                  <span className="font-mono text-cyan">
+                    −{formatCOP(descuento)}
+                  </span>
+                </div>
+              )}
               <div className="border-t border-elevated/50 pt-3">
                 <div className="flex justify-between items-center">
                   <span className="font-medium text-text-primary">Total</span>

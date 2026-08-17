@@ -113,6 +113,7 @@ export interface Order {
   subtotal: number;
   shipping_cost: number;
   discount: number;
+  discount_code: string | null;
   total: number;
   paid_at: string | null;
   production_at: string | null;

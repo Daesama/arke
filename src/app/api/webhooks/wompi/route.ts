@@ -25,7 +25,30 @@ export async function POST(req: Request) {
 
     const supabase = createAdminClient();
     const reference = transaction.reference;
-    const status = transaction.status;
+    let status = transaction.status;
+
+    // Segundo cerrojo sobre el monto: la firma de integridad ya ata el
+    // valor a la referencia, pero si por lo que sea llega un APPROVED
+    // por menos de lo que vale el pedido, no se marca como pagado.
+    if (status === "APPROVED") {
+      const { data: order } = await supabase
+        .from("orders")
+        .select("total")
+        .eq("payment_reference", reference)
+        .maybeSingle();
+
+      const pagado = Number(transaction.amount_in_cents);
+      const esperado = order ? order.total * 100 : null;
+
+      if (esperado === null || !Number.isFinite(pagado) || pagado < esperado) {
+        console.error("[Wompi webhook] Monto insuficiente, no se marca pagado", {
+          reference,
+          pagado,
+          esperado,
+        });
+        status = "PAGO_INCOMPLETO";
+      }
+    }
 
     let paymentStatus: string;
     let orderStatus: string;

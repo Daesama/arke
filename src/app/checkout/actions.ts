@@ -1,8 +1,16 @@
 "use server";
 
+import { RateLimiterMemory } from "rate-limiter-flexible";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { ENVIO } from "@/lib/utils/pricing";
+import {
+  ENVIO,
+  calcularSubtotal,
+  getActiveZonesFromConfig,
+} from "@/lib/utils/pricing";
+import { resolveDiscount, type AppliedDiscount } from "@/lib/discounts";
+import type { TshirtGenero, TshirtMaterial } from "@/types/database";
+import type { DesignZoneConfig } from "@/types/design";
 
 interface ShippingData {
   name: string;
@@ -36,9 +44,86 @@ interface CreateOrderResult {
   error?: string;
 }
 
+/** 10 intentos de código por cuenta cada minuto. */
+const intentosDeCodigo = new RateLimiterMemory({ points: 10, duration: 60 });
+
+const MATERIALES: TshirtMaterial[] = [
+  "piel_de_durazno",
+  "algodon_licrado",
+  "seda_fria",
+];
+const GENEROS: TshirtGenero[] = ["mujer", "hombre"];
+const MAX_QUANTITY = 20;
+
+/**
+ * Precio de un item calculado por el servidor.
+ *
+ * El carrito vive en localStorage (Zustand persist), así que unitPrice y
+ * quantity llegan bajo control del cliente y NO se pueden usar para
+ * cobrar: editar localStorage bastaría para pedir una camiseta a $1.000.
+ * Acá se rearma el precio desde la misma tabla que ve el usuario en
+ * /crear y /catalogo, con material, género y zonas de estampado.
+ *
+ * Devuelve null si el item viene mal formado, y entonces el pedido no
+ * se crea.
+ */
+function precioItemServidor(
+  item: CartItemData,
+): { unitPrice: number; quantity: number } | null {
+  const material = item.material as TshirtMaterial;
+  const genero = item.genero as TshirtGenero;
+
+  if (!MATERIALES.includes(material)) return null;
+  if (!GENEROS.includes(genero)) return null;
+
+  const zones = getActiveZonesFromConfig(
+    (item.designConfig ?? undefined) as DesignZoneConfig | undefined,
+  );
+  if (zones.length === 0) return null;
+
+  const quantity = Math.floor(Number(item.quantity));
+  if (!Number.isFinite(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
+    return null;
+  }
+
+  return { unitPrice: calcularSubtotal(material, genero, zones), quantity };
+}
+
+/**
+ * Valida un código para mostrárselo al usuario mientras llena el
+ * checkout. Es solo para la UI — el descuento que de verdad se cobra lo
+ * vuelve a calcular createOrder, así que manipular esta respuesta desde
+ * el navegador no cambia el precio.
+ */
+export async function validarCodigoDescuento(
+  code: string,
+  subtotal: number,
+): Promise<{ code?: string; amount?: number; label?: string; error?: string }> {
+  const supabaseAuth = await createClient();
+  const {
+    data: { user },
+  } = await supabaseAuth.auth.getUser();
+
+  if (!user) return { error: "Inicia sesión para usar un código." };
+
+  // Los códigos son palabras cortas y adivinables, así que se limita el
+  // ritmo de intentos por cuenta para que no se puedan enumerar.
+  try {
+    await intentosDeCodigo.consume(user.id);
+  } catch {
+    return { error: "Demasiados intentos. Espera un momento." };
+  }
+
+  const { discount, error } = await resolveDiscount(code, subtotal, user.id);
+  if (error || !discount) return { error: error ?? "Código inválido." };
+
+  return discount;
+}
+
 export async function createOrder(
   shipping: ShippingData,
   items: CartItemData[],
+  discountCode?: string | null,
 ): Promise<CreateOrderResult> {
   let user;
   try {
@@ -55,11 +140,38 @@ export async function createOrder(
 
   const supabase = createAdminClient();
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
+  if (items.length === 0) {
+    return { error: "Tu carrito está vacío." };
+  }
+
+  // Precios del servidor: lo que mande el carrito es solo una sugerencia.
+  const precios = items.map(precioItemServidor);
+  if (precios.some((p) => p === null)) {
+    console.error("[Checkout] Item inválido en el carrito", {
+      userId: user.id,
+    });
+    return {
+      error: "Hay un producto inválido en tu carrito. Vacíalo y vuelve a armarlo.",
+    };
+  }
+
+  const preciosOk = precios as { unitPrice: number; quantity: number }[];
+  const subtotal = preciosOk.reduce(
+    (sum, p) => sum + p.unitPrice * p.quantity,
     0,
   );
-  const total = subtotal + ENVIO;
+
+  // El descuento se recalcula acá aunque el checkout ya lo haya validado:
+  // esta es la cuenta de la que sale amountInCents, o sea lo que se le
+  // firma a Wompi. Si el código venció entre que lo escribió y pagó, o
+  // viene inventado desde el navegador, simplemente cobramos el total.
+  let descuento: AppliedDiscount | null = null;
+  if (discountCode) {
+    const { discount } = await resolveDiscount(discountCode, subtotal, user.id);
+    descuento = discount ?? null;
+  }
+
+  const total = subtotal + ENVIO - (descuento?.amount ?? 0);
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
@@ -76,7 +188,8 @@ export async function createOrder(
       payment_status: "pending",
       subtotal,
       shipping_cost: ENVIO,
-      discount: 0,
+      discount: descuento?.amount ?? 0,
+      discount_code: descuento?.code ?? null,
       total,
     })
     .select("id, order_number")
@@ -98,15 +211,15 @@ export async function createOrder(
     slugToId[p.slug] = p.id;
   }
 
-  const orderItems = items.map((item) => ({
+  const orderItems = items.map((item, i) => ({
     order_id: order.id,
     product_id: slugToId[item.productId] ?? null,
     design_id: item.designId || null,
-    quantity: item.quantity,
+    quantity: preciosOk[i].quantity,
     size: item.size,
     color: item.color,
     print_position: item.printPosition || "pecho",
-    unit_price: item.unitPrice,
+    unit_price: preciosOk[i].unitPrice,
     design_snapshot: {
       prompt: item.designPrompt,
       image_url: item.designImageUrl,
