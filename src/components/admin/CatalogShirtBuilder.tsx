@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils/cn";
 import { DESIGN_CATEGORIES, PRINT_ZONES, TSHIRT_COLORS } from "@/lib/utils/constants";
 import { useDesignZones } from "@/hooks/useDesignZones";
 import { createCatalogShirt } from "@/app/admin/catalogo/actions";
+import { conRespuesta } from "@/lib/utils/serverAction";
 import type { DesignCategory } from "@/types/database";
 
 /**
@@ -81,7 +82,7 @@ export function CatalogShirtBuilder({ onCancel }: { onCancel: () => void }) {
       formData.set(`transform_${key}`, JSON.stringify(transforms[key]));
     }
 
-    const result = await createCatalogShirt(formData);
+    const result = conRespuesta(await createCatalogShirt(formData), "CatalogShirtBuilder");
     setSaving(false);
 
     if (result.error) return setError(result.error);

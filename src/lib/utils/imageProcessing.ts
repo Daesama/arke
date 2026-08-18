@@ -38,6 +38,27 @@ export const MAX_IMAGE_DIM = 2048;
 export const SEGMENTATION_MAX_DIM = 1024;
 
 /**
+ * Presupuesto de peso de una imagen que se va a subir en una server action.
+ *
+ * El cap de `MAX_IMAGE_DIM` es de PÍXELES, no de bytes, y esos dos no van
+ * juntos: la misma foto de 2048px pesa ~400KB si es un logo plano y más de
+ * 10MB si es fotográfica y va como PNG. Y peor: `downscaleImageFile`
+ * devuelve el archivo original sin tocar cuando ya mide menos de 2048px,
+ * así que un PNG pesado de 1500px viajaba tal cual.
+ *
+ * Eso explica por qué "quitar fondo" parecía arreglar la subida: el
+ * recorte deja casi toda la imagen en transparente, que es justo lo que un
+ * PNG comprime a nada, mientras que la misma imagen CON fondo se va varias
+ * veces más pesada. Lo que fallaba no era el fondo, era el peso.
+ *
+ * 1.5MB deja margen cómodo por debajo del límite por defecto de un nginx
+ * sin configurar (`client_max_body_size 1m` es lo que corta primero en un
+ * VPS) contando las 3 zonas y el overhead del multipart, y sigue siendo
+ * holgado para un estampado: a 2048px son ~150 DPI reales sobre tela.
+ */
+export const MAX_UPLOAD_BYTES = 1.5 * 1024 * 1024;
+
+/**
  * Decodifica un blob a algo dibujable en canvas.
  *
  * `imageOrientation: "from-image"` es lo que evita que las fotos verticales
@@ -83,13 +104,145 @@ function release(img: ImageBitmap | HTMLImageElement) {
   if (typeof ImageBitmap !== "undefined" && img instanceof ImageBitmap) img.close();
 }
 
-function canvasToPngFile(canvas: HTMLCanvasElement, name: string): Promise<File> {
+function canvasToFile(
+  canvas: HTMLCanvasElement,
+  name: string,
+  type: "image/png" | "image/jpeg",
+  quality?: number,
+): Promise<File> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) return reject(new Error("No se pudo generar la imagen"));
-      resolve(new File([blob], name, { type: "image/png" }));
-    }, "image/png");
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return reject(new Error("No se pudo generar la imagen"));
+        resolve(new File([blob], name, { type }));
+      },
+      type,
+      quality,
+    );
   });
+}
+
+function canvasToPngFile(canvas: HTMLCanvasElement, name: string): Promise<File> {
+  return canvasToFile(canvas, name, "image/png");
+}
+
+function renameExt(name: string, ext: "png" | "jpg"): string {
+  const base = name.replace(/\.\w+$/, "");
+  return `${base || "diseno"}.${ext}`;
+}
+
+/** Dibuja la imagen a `scale` y devuelve el lienzo, o null si no hay 2d. */
+function drawScaled(
+  img: ImageBitmap | HTMLImageElement,
+  width: number,
+  height: number,
+  scale: number,
+): HTMLCanvasElement | null {
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+/**
+ * ¿La imagen tiene transparencia real?
+ *
+ * Decide el formato de salida de `fitForUpload`: con alfa hay que quedarse
+ * en PNG (JPEG pintaría el fondo de negro y arruinaría el recorte), sin
+ * alfa conviene JPEG, que es donde está toda la ganancia de peso.
+ *
+ * Se mira una copia de 128px y no la imagen completa: el bucle sobre una
+ * foto de 2048² son 4M de píxeles en el hilo principal, y al reducir, el
+ * navegador promedia el alfa, así que cualquier zona transparente baja de
+ * 255 igual. Ante la duda (no se pudo leer el lienzo) se asume que hay
+ * alfa: equivocarse hacia PNG solo cuesta peso, hacia JPEG destruye el
+ * recorte.
+ */
+function tieneTransparencia(img: ImageBitmap | HTMLImageElement, width: number, height: number): boolean {
+  const scale = Math.min(1, 128 / Math.max(width, height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return true;
+
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  try {
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 250) return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+const CALIDADES_JPEG = [0.92, 0.85, 0.75];
+const ESCALAS = [1, 0.75, 0.55];
+
+/**
+ * Deja la imagen por debajo de `maxBytes` re-codificándola, sin bajar de
+ * resolución mientras alcance con bajar calidad.
+ *
+ * Orden de sacrificios: primero calidad JPEG (invisible en tela), después
+ * resolución. Si nada entra en el presupuesto devuelve la variante más
+ * liviana que consiguió — subir algo más chico siempre es mejor que subir
+ * el original y que el proxy corte el POST.
+ *
+ * Devuelve el archivo tal cual si ya entra, si no se puede decodificar o
+ * si el re-encode no logra mejorarlo: esto es una optimización, no una
+ * validación, y nunca debe impedir un pedido.
+ */
+export async function fitForUpload(
+  file: File,
+  maxBytes: number = MAX_UPLOAD_BYTES,
+): Promise<File> {
+  if (file.size <= maxBytes) return file;
+
+  let img: ImageBitmap | HTMLImageElement;
+  try {
+    img = await decodeImage(file);
+  } catch {
+    return file;
+  }
+
+  try {
+    const { width, height } = dimsOf(img);
+    if (!width || !height) return file;
+
+    const conAlfa = tieneTransparencia(img, width, height);
+    let mejor: File | null = null;
+
+    for (const scale of ESCALAS) {
+      const canvas = drawScaled(img, width, height, scale);
+      if (!canvas) break;
+
+      // Secuencial y no en paralelo: cada intento aloca un blob del tamaño
+      // de la imagen y tenerlos los tres vivos a la vez es justo lo que
+      // tumba la pestaña en un celular de gama media.
+      const intentos = conAlfa ? [undefined] : CALIDADES_JPEG;
+
+      for (const calidad of intentos) {
+        const candidato = conAlfa
+          ? await canvasToFile(canvas, renameExt(file.name, "png"), "image/png")
+          : await canvasToFile(canvas, renameExt(file.name, "jpg"), "image/jpeg", calidad);
+
+        if (candidato.size <= maxBytes) return candidato;
+        if (!mejor || candidato.size < mejor.size) mejor = candidato;
+      }
+    }
+
+    return mejor && mejor.size < file.size ? mejor : file;
+  } catch {
+    return file;
+  } finally {
+    release(img);
+  }
 }
 
 /**

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { OrderCard } from "@/components/design/OrderCard";
 import Link from "next/link";
 import { getUserOrders } from "./actions";
+import { conRespuesta } from "@/lib/utils/serverAction";
 import type { Order } from "@/types/database";
 
 export default function PedidosPage() {
@@ -16,7 +17,7 @@ export default function PedidosPage() {
   useEffect(() => {
     async function fetchOrders() {
       try {
-        const result = await getUserOrders();
+        const result = conRespuesta(await getUserOrders(), "MisPedidos");
         if (result.error) {
           setError(result.error);
         } else {

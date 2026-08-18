@@ -12,6 +12,7 @@ import { getDesglose, calcularSubtotal, formatCOP } from "@/lib/utils/pricing";
 import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils/cn";
 import { uploadDesignAndSave } from "./actions";
+import { conRespuesta, SIN_RESPUESTA_DEL_SERVIDOR } from "@/lib/utils/serverAction";
 import { PRINT_ZONES } from "@/lib/utils/constants";
 import { useDesignZones } from "@/hooks/useDesignZones";
 import type { TshirtColor, TshirtSize, TshirtGenero, TshirtMaterial } from "@/types/database";
@@ -134,7 +135,19 @@ export function CrearClient() {
       }
 
 
-      const result = await uploadDesignAndSave(formData);
+      let result = conRespuesta(await uploadDesignAndSave(formData), "Crear");
+
+      // Una respuesta que nunca llegó casi siempre es la subida cortada a
+      // mitad de camino (red móvil, proxy), no un error real: se reintenta
+      // una vez antes de darle un cartel rojo a alguien que solo quiere
+      // comprar una camiseta. Lo peor que puede pasar es una fila de
+      // `designs` huérfana, que no cuesta nada.
+      //
+      // Ojo: esto vale acá y NO en el checkout — reintentar `createOrder`
+      // duplicaría el pedido y el cobro.
+      if (result.error === SIN_RESPUESTA_DEL_SERVIDOR) {
+        result = conRespuesta(await uploadDesignAndSave(formData), "Crear/reintento");
+      }
 
 
       if (result.error) {

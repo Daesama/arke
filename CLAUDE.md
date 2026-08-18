@@ -236,7 +236,17 @@ El usuario puede usar 1, 2 o las 3 zonas — no todas son obligatorias, solo se 
 7. Se crea registro en tabla `designs` con config JSON de zonas (incluye `ZoneTransform`: offsetX/offsetY/scale de cada zona activa)
 8. El admin descarga las imágenes puras para enviar al estampador
 
-**NO se usa IA generativa para procesar imágenes en este flujo.** Las imágenes del usuario se colocan tal cual (la única transformación posible es la remoción de fondo, que es determinística/local, no generativa).
+**NO se usa IA generativa para procesar imágenes en este flujo.** Las imágenes del usuario se colocan tal cual (las únicas transformaciones son la remoción de fondo —determinística/local— y el ajuste de peso de `fitForUpload`, ver abajo).
+
+#### Peso de lo que se sube (`fitForUpload`) y respuestas perdidas (`conRespuesta`)
+
+Dos piezas que existen por el mismo síntoma: "agregar al carrito" fallaba con
+`Cannot read properties of undefined (reading 'error')` cuando la imagen conservaba su fondo, y funcionaba al quitárselo.
+
+- `fitForUpload` (`src/lib/utils/imageProcessing.ts`): `MAX_IMAGE_DIM` capa **píxeles**, no **bytes**, y `downscaleImageFile` devuelve el archivo intacto si ya mide menos de 2048px. Una imagen CON fondo pesa varias veces lo que la misma imagen recortada (el PNG comprime el transparente a nada), así que el POST de la server action se iba a varios MB y moría en el proxy antes de llegar a la acción. `fitForUpload` deja cualquier zona por debajo de `MAX_UPLOAD_BYTES` (1.5MB): baja calidad JPEG primero, resolución después, y se queda en PNG si la imagen tiene alfa. Lo llaman `handleFileSelect` y `handleRemoveBg` en `useDesignZones`, así que aplica a /crear, /admin/catalogo y /admin/pedido-gratis por igual.
+- `conRespuesta` (`src/lib/utils/serverAction.ts`): Next **resuelve con `undefined`** —no rechaza— la promesa de una server action cuando la respuesta del POST no es un payload RSC (413/502/504 del proxy, redirect del middleware por sesión vencida, pestaña con un build viejo). Todo `result.error` sin envolver reventaba ahí con ese mensaje ilegible, incluso cuando el servidor **sí** había completado el trabajo (el diseño quedaba guardado y el cliente igual mostraba error). Envolver siempre: `const result = conRespuesta(await miAction(...), "Contexto")`.
+
+Si el POST igual se corta en el servidor propio, el límite que corta primero es `client_max_body_size` de nginx (1MB por defecto): conviene subirlo a ~25m, en línea con el `bodySizeLimit: "35mb"` de `next.config.mjs`.
 
 #### Componente `TshirtPreview` (`src/components/design/TshirtPreview.tsx`)
 

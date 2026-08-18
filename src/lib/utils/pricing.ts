@@ -1,16 +1,26 @@
 import type { DesignZone, DesignZoneConfig } from "@/types/design";
 import type { TshirtGenero, TshirtMaterial } from "@/types/database";
 
+/**
+ * Precios vigentes desde el 2026-08-17 (+$2.000 sobre la lista anterior,
+ * tanto en prenda como en estampado; el envío quedó igual).
+ *
+ * Los estampados son redondos a propósito: como la prenda termina en 900,
+ * el total que ve el cliente conserva ese final (hombre + algodón + pecho
+ * grande + envío = $49.900, justo debajo de la barrera de los 50 mil, que
+ * es el número que de verdad se mira en el checkout). Si algún día se
+ * mueven estos valores, revisar que el pedido típico no cruce esa marca.
+ */
 const PRECIOS_CAMISETA: Record<TshirtMaterial, Record<TshirtGenero, number>> = {
-  piel_de_durazno: { mujer: 21900, hombre: 23900 },
-  algodon_licrado: { mujer: 22900, hombre: 23900 },
-  seda_fria: { mujer: 26900, hombre: 28900 },
+  piel_de_durazno: { mujer: 23900, hombre: 25900 },
+  algodon_licrado: { mujer: 24900, hombre: 25900 },
+  seda_fria: { mujer: 28900, hombre: 30900 },
 };
 
 const PRECIOS_ESTAMPADO: Record<DesignZone, { label: string; price: number }> = {
-  pechoBolsillo: { label: "Estampado pecho bolsillo", price: 10000 },
-  abdominalGrande: { label: "Estampado pecho grande", price: 17000 },
-  espaldaGrande: { label: "Estampado espalda grande", price: 21000 },
+  pechoBolsillo: { label: "Estampado pecho bolsillo", price: 12000 },
+  abdominalGrande: { label: "Estampado pecho grande", price: 19000 },
+  espaldaGrande: { label: "Estampado espalda grande", price: 23000 },
 };
 
 export const ENVIO = 5000;

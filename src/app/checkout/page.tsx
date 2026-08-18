@@ -24,6 +24,7 @@ import Script from "next/script";
 import { cn } from "@/lib/utils/cn";
 import { formatCOP, getActiveZonesFromConfig, getDesglose, ENVIO } from "@/lib/utils/pricing";
 import { createOrder, saveOrderAssets, validarCodigoDescuento } from "./actions";
+import { conRespuesta } from "@/lib/utils/serverAction";
 import { captureElement } from "@/lib/utils/capturePreview";
 import type { DesignZoneConfig } from "@/types/design";
 
@@ -121,7 +122,7 @@ export default function CheckoutPage() {
     setCodeError(null);
 
     try {
-      const res = await validarCodigoDescuento(codeInput, subtotal);
+      const res = conRespuesta(await validarCodigoDescuento(codeInput, subtotal), "Checkout/codigo");
       if (res.error || !res.code) {
         setAppliedCode(null);
         setCodeError(res.error ?? "Código inválido.");
@@ -269,7 +270,7 @@ export default function CheckoutPage() {
 
       let result;
       try {
-        result = await createOrder(shipping, cartItems, appliedCode?.code);
+        result = conRespuesta(await createOrder(shipping, cartItems, appliedCode?.code), "Checkout");
 
       } catch (err) {
         console.error("[Checkout] Paso 2 ERROR: Fallo creando pedido:", err);

@@ -60,6 +60,21 @@ export const useCartStore = create<CartState>()(
       totalPrice: () =>
         get().items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
     }),
-    { name: "arke-cart" },
+    {
+      name: "arke-cart",
+
+      // `unitPrice` queda congelado en el momento en que se agregó el item,
+      // pero `createOrder` recalcula el precio del lado del servidor antes
+      // de cobrar (a propósito: el carrito vive en localStorage y no se
+      // puede confiar en él). Con eso, un carrito armado antes de un cambio
+      // de precios mostraría un total y cobraría otro.
+      //
+      // Por eso: al tocar la lista de precios se sube esta versión y los
+      // carritos viejos se vacían solos. Molesta menos volver a armar el
+      // carrito que descubrir la diferencia en el resumen de pago.
+      version: 1,
+      migrate: () => ({ items: [] }),
+      partialize: (state) => ({ items: state.items }),
+    },
   ),
 );

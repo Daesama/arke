@@ -10,6 +10,7 @@ import { Gift, CheckCircle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useDesignZones } from "@/hooks/useDesignZones";
 import { createFreeOrder } from "./actions";
+import { conRespuesta } from "@/lib/utils/serverAction";
 import type { DesignZone } from "@/types/design";
 import type { TshirtGenero, TshirtMaterial } from "@/types/database";
 
@@ -131,7 +132,7 @@ export default function PedidoGratisPage() {
       }
     }
 
-    const result = await createFreeOrder(formData);
+    const result = conRespuesta(await createFreeOrder(formData), "PedidoGratis");
 
     if (result.error) {
       setError(result.error);

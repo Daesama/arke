@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Upload, Palette, Truck, ArrowRight } from "lucide-react";
+import { Upload, Palette, Truck, ArrowRight, Shirt } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
@@ -134,17 +134,43 @@ export default function Home() {
           Así de simple.
         </motion.h1>
 
-        {/* CTA */}
+        {/*
+          CTA — dos caminos, no uno.
+
+          El catálogo solo vivía en el menú del header, que en mobile está
+          detrás del botón de hamburguesa: la mayoría no lo despliega y se
+          iba sin enterarse de que hay camisas ya hechas. Acá los dos
+          caminos se ven de una: subir tu arte o mirar lo que ya existe.
+
+          En celular se apilan a ancho completo (dos objetivos de toque
+          grandes, ambos sobre la línea de flote) y desde `sm` van uno al
+          lado del otro. Ponerlos lado a lado también en 360px obligaba a
+          achicarlos tanto que dejaban de leerse como el CTA principal.
+        */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.5 }}
-          className="relative z-10 mt-12"
+          className="relative z-10 mt-10 flex w-full max-w-xs flex-col items-center gap-3 sm:mt-12 sm:max-w-none sm:flex-row sm:justify-center sm:gap-4"
         >
-          <Link href="/crear">
-            <Button size="lg" className="animate-glow-cyan-pulse px-10 py-4 text-base">
+          <Link href="/crear" className="w-full sm:w-auto">
+            <Button
+              size="lg"
+              className="w-full animate-glow-cyan-pulse px-10 py-4 text-base sm:w-auto"
+            >
               Crea tu camiseta
               <ArrowRight className="h-5 w-5" />
+            </Button>
+          </Link>
+
+          <Link href="/catalogo" className="w-full sm:w-auto">
+            <Button
+              size="lg"
+              variant="secondary"
+              className="w-full px-10 py-4 text-base sm:w-auto"
+            >
+              <Shirt className="h-5 w-5" strokeWidth={1.5} />
+              Ver catálogo
             </Button>
           </Link>
         </motion.div>

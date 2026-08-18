@@ -16,6 +16,7 @@ import {
   importCatalogShirtFromExisting,
   setCatalogDesignPublic,
 } from "@/app/admin/catalogo/actions";
+import { conRespuesta } from "@/lib/utils/serverAction";
 import type { CatalogDesign, ReusableShirt } from "@/types/design";
 import type { DesignCategory } from "@/types/database";
 
@@ -70,12 +71,12 @@ export function CatalogManager({
     if (!importTitle.trim()) return setError("Ponle un nombre a la camisa.");
 
     setImporting(true);
-    const result = await importCatalogShirtFromExisting({
+    const result = conRespuesta(await importCatalogShirtFromExisting({
       sourceDesignId: picked.sourceDesignId,
       title: importTitle.trim(),
       category: importCategory,
       isPublic: importPublish,
-    });
+    }), "CatalogManager/importar");
     setImporting(false);
 
     if (result.error) return setError(result.error);
@@ -87,7 +88,7 @@ export function CatalogManager({
 
   function handleTogglePublic(design: CatalogDesign) {
     startTransition(async () => {
-      const result = await setCatalogDesignPublic(design.id, !design.isPublic);
+      const result = conRespuesta(await setCatalogDesignPublic(design.id, !design.isPublic), "CatalogManager/publicar");
       if (result.error) setError(result.error);
       router.refresh();
     });
@@ -95,7 +96,7 @@ export function CatalogManager({
 
   function handleDelete(design: CatalogDesign) {
     startTransition(async () => {
-      const result = await deleteCatalogDesign(design.id);
+      const result = conRespuesta(await deleteCatalogDesign(design.id), "CatalogManager/borrar");
       // deleteCatalogDesign devuelve mensaje también cuando despublica en
       // vez de borrar (camisa con pedidos), por eso se muestra siempre.
       if (result.error) setError(result.error);

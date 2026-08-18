@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PRINT_ZONES } from "@/lib/utils/constants";
-import { downscaleImageFile } from "@/lib/utils/imageProcessing";
+import { downscaleImageFile, fitForUpload } from "@/lib/utils/imageProcessing";
 import { BgRemovalCancelled, removeBackground, type BgProgress } from "@/lib/utils/removeBgClient";
 import type { BgRemovalStatus, DesignZone, ZoneTransform } from "@/types/design";
 
@@ -121,7 +121,15 @@ export function useDesignZones() {
       // que es lo que de verdad necesita un estampado. Sin esto, el resto de
       // la sesión arrastra el peso: más RAM de decodificación, más lento el
       // quitar fondo y una subida final de varios MB con datos móviles.
-      const optimizing = downscaleImageFile(file).catch(() => file);
+      //
+      // El `fitForUpload` de después cierra el otro flanco: 2048px no dice
+      // nada del peso en bytes, y una imagen CON fondo pesa varias veces lo
+      // que la misma imagen recortada. Ese peso es el que hacía que el POST
+      // de "agregar al carrito" muriera en el proxy antes de llegar a la
+      // acción.
+      const optimizing = downscaleImageFile(file)
+        .then((reducida) => fitForUpload(reducida))
+        .catch(() => file);
       optimizingRef.current[zone] = optimizing;
 
       void optimizing.then(async (optimized) => {
@@ -218,7 +226,7 @@ export function useDesignZones() {
       const sourceFile = pending ? await pending : zoneState.file;
       if (tokenRef.current[zone] !== token) return;
 
-      const newFile = await removeBackground(sourceFile, {
+      const recorte = await removeBackground(sourceFile, {
         signal: controller.signal,
         onProgress: (progress) => {
           setZones((prev) =>
@@ -228,6 +236,11 @@ export function useDesignZones() {
           );
         },
       });
+
+      // El recorte suele adelgazar solo (el PNG comprime el transparente a
+      // nada), pero un sujeto grande sobre 2048px todavía puede pasarse del
+      // presupuesto de subida. Mismo cap que el camino sin quitar fondo.
+      const newFile = await fitForUpload(recorte);
 
       const newPreview = URL.createObjectURL(newFile);
       setZones((prev) => {

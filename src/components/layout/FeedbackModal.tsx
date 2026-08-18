@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Bug, Lightbulb, MessageCircle, Send, CheckCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { submitFeedback } from "@/app/feedback/actions";
+import { conRespuesta } from "@/lib/utils/serverAction";
 
 const TYPES = [
   { value: "error", label: "Reportar error", icon: Bug, color: "magenta" },
@@ -54,7 +55,7 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
     formData.set("page_url", window.location.href);
     formData.set("user_agent", navigator.userAgent);
 
-    const result = await submitFeedback(formData);
+    const result = conRespuesta(await submitFeedback(formData), "Feedback");
 
     if (result.error) {
       setError(result.error);
