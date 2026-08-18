@@ -42,6 +42,13 @@ interface CreateOrderResult {
   orderId?: string;
   orderNumber?: number;
   error?: string;
+  /**
+   * El código que traía el carrito ya no aplica (se agotaron los canjes
+   * entre que lo escribió y le dio a pagar, venció, o nunca fue válido).
+   * El pedido NO se creó: el checkout tiene que quitar el código, mostrar
+   * el total sin descuento y dejar que la persona decida de nuevo.
+   */
+  discountRejected?: boolean;
 }
 
 /** 10 intentos de código por cuenta cada minuto. */
@@ -163,12 +170,30 @@ export async function createOrder(
 
   // El descuento se recalcula acá aunque el checkout ya lo haya validado:
   // esta es la cuenta de la que sale amountInCents, o sea lo que se le
-  // firma a Wompi. Si el código venció entre que lo escribió y pagó, o
-  // viene inventado desde el navegador, simplemente cobramos el total.
+  // firma a Wompi. Un código inventado desde el navegador no logra nada.
+  //
+  // Antes, si el código no pasaba esta segunda validación, se cobraba el
+  // total completo en silencio: el resumen seguía mostrando el descuento
+  // y la pasarela abría con otro monto. Pasa de verdad cuando alguien más
+  // quema el último canje en el medio. Ahora se corta acá y el checkout
+  // avisa — mejor volver al resumen con el precio real que descubrirlo en
+  // la pantalla de pago.
   let descuento: AppliedDiscount | null = null;
   if (discountCode) {
-    const { discount } = await resolveDiscount(discountCode, subtotal, user.id);
-    descuento = discount ?? null;
+    const { discount, error: descuentoError } = await resolveDiscount(
+      discountCode,
+      subtotal,
+      user.id,
+    );
+
+    if (!discount) {
+      return {
+        discountRejected: true,
+        error: descuentoError ?? "Ese código ya no está disponible.",
+      };
+    }
+
+    descuento = discount;
   }
 
   const total = subtotal + ENVIO - (descuento?.amount ?? 0);

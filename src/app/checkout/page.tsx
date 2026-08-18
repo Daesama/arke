@@ -280,6 +280,23 @@ export default function CheckoutPage() {
         return;
       }
 
+      // El código se quemó entre que lo aplicó y le dio a pagar: el pedido
+      // no se creó a propósito. Se le quita el código, el resumen se
+      // recalcula solo (el total sale de `appliedCode`) y vuelve al paso 2
+      // viendo el precio que de verdad se le va a cobrar.
+      if (result.discountRejected) {
+        console.warn("[Checkout] Código rechazado al cobrar:", result.error);
+        setAppliedCode(null);
+        setCodeInput("");
+        setCodeError(result.error ?? "Ese código ya no está disponible.");
+        setError(
+          "Quitamos el código porque dejó de estar disponible. Revisa el nuevo total antes de pagar.",
+        );
+        setStep(2);
+        setLoading(false);
+        return;
+      }
+
       if (result.error) {
         console.error("[Checkout] Paso 2 ERROR:", result.error);
         setError(result.error);
