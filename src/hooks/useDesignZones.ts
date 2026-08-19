@@ -346,6 +346,34 @@ export function useDesignZones() {
     espaldaGrande: espaldaTransform,
   };
 
+  /**
+   * Archivos definitivos de las 3 zonas, esperando lo que siga en vuelo.
+   *
+   * Quien vaya a subir TIENE que pedir los archivos por acá y no leer
+   * `zones[zona].file`. Durante los primeros segundos después de elegir una
+   * imagen, ese campo es todavía la foto ORIGINAL de 12MP: el downscale y el
+   * `fitForUpload` corren en paralelo y recién al terminar hacen el swap.
+   *
+   * Un usuario que elige la imagen y toca "agregar al carrito" enseguida caía
+   * justo en esa ventana y mandaba los 12MP al POST, que moría en el proxy;
+   * el error que veía era "El servidor no devolvió respuesta". Quitar el
+   * fondo lo tapaba por casualidad: ese camino sí espera la optimización
+   * (ver handleRemoveBg) y encima tarda lo suficiente como para que ya no
+   * quede nada pendiente.
+   */
+  const getFilesForUpload = useCallback(async () => {
+    const entries = await Promise.all(
+      PRINT_ZONES.map(async ({ key }) => {
+        const pending = optimizingRef.current[key];
+        // La promesa resuelve al archivo optimizado y ya trae su propio
+        // .catch que devuelve el original, así que nunca rechaza ni deja al
+        // usuario sin poder comprar porque el resize falló.
+        return [key, pending ? await pending : zones[key].file] as const;
+      }),
+    );
+    return Object.fromEntries(entries) as Record<DesignZone, File | null>;
+  }, [zones]);
+
   const activeZones = PRINT_ZONES.filter((z) => zones[z.key].file).map((z) => z.key);
   const hasAnyImage = activeZones.length > 0;
 
@@ -361,6 +389,7 @@ export function useDesignZones() {
     setAbdominalTransform,
     espaldaTransform,
     setEspaldaTransform,
+    getFilesForUpload,
     handleFileSelect,
     handleRemove,
     handleRemoveBg,

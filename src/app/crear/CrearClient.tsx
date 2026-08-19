@@ -86,6 +86,7 @@ export function CrearClient() {
     setAbdominalTransform,
     espaldaTransform,
     setEspaldaTransform,
+    getFilesForUpload,
     handleFileSelect,
     handleRemove,
     handleRemoveBg,
@@ -113,6 +114,11 @@ export function CrearClient() {
     setIsUploading(true);
 
     try {
+      // Los archivos salen del hook, no de `zones`: si el downscale sigue en
+      // vuelo hay que esperarlo, o se sube la foto original de 12MP y el POST
+      // muere en el proxy. Ver getFilesForUpload.
+      const files = await getFilesForUpload();
+
       const formData = new FormData();
       formData.set("genero", genero!);
       formData.set("material", material!);
@@ -120,9 +126,9 @@ export function CrearClient() {
       formData.set("talla", size!);
 
       for (const zone of ZONES) {
-        const zoneState = zones[zone.key];
-        if (!zoneState.file) continue;
-        formData.set(`zone_${zone.key}`, zoneState.file);
+        const file = files[zone.key];
+        if (!file) continue;
+        formData.set(`zone_${zone.key}`, file);
         if (zone.key === "pechoBolsillo") {
           formData.set(`transform_${zone.key}`, JSON.stringify(pechoTransform));
         }
@@ -162,9 +168,7 @@ export function CrearClient() {
       }
 
       const primaryFile =
-        zones.pechoBolsillo.file ??
-        zones.abdominalGrande.file ??
-        zones.espaldaGrande.file;
+        files.pechoBolsillo ?? files.abdominalGrande ?? files.espaldaGrande;
       let previewBase64: string | undefined;
       if (primaryFile) {
         try {

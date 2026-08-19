@@ -73,6 +73,7 @@ export default function PedidoGratisPage() {
     setAbdominalTransform,
     espaldaTransform,
     setEspaldaTransform,
+    getFilesForUpload,
     handleFileSelect,
     handleRemove,
     handleRemoveBg,
@@ -105,6 +106,10 @@ export default function PedidoGratisPage() {
     setLoading(true);
     setError(null);
 
+    // Igual que en /crear: esperar la optimización en vuelo antes de armar
+    // el POST. Ver getFilesForUpload.
+    const files = await getFilesForUpload();
+
     const formData = new FormData();
     formData.set("genero", genero);
     formData.set("material", material);
@@ -118,9 +123,9 @@ export default function PedidoGratisPage() {
     formData.set("shipping_notes", shipping.notes);
 
     for (const zone of ZONES) {
-      const zoneState = zones[zone.key];
-      if (!zoneState.file) continue;
-      formData.set(`zone_${zone.key}`, zoneState.file);
+      const file = files[zone.key];
+      if (!file) continue;
+      formData.set(`zone_${zone.key}`, file);
       if (zone.key === "pechoBolsillo") {
         formData.set(`transform_${zone.key}`, JSON.stringify(pechoTransform));
       }

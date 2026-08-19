@@ -44,6 +44,7 @@ export function CatalogShirtBuilder({ onCancel }: { onCancel: () => void }) {
     setAbdominalTransform,
     espaldaTransform,
     setEspaldaTransform,
+    getFilesForUpload,
     handleFileSelect,
     handleRemove,
     handleRemoveBg,
@@ -62,6 +63,10 @@ export function CatalogShirtBuilder({ onCancel }: { onCancel: () => void }) {
 
     setSaving(true);
 
+    // Igual que en /crear: esperar la optimización en vuelo antes de armar
+    // el POST. Ver getFilesForUpload.
+    const files = await getFilesForUpload();
+
     const formData = new FormData();
     formData.set("title", title.trim());
     formData.set("category", category);
@@ -76,7 +81,7 @@ export function CatalogShirtBuilder({ onCancel }: { onCancel: () => void }) {
     };
 
     for (const { key } of PRINT_ZONES) {
-      const file = zones[key].file;
+      const file = files[key];
       if (!file) continue;
       formData.set(`zone_${key}`, file);
       formData.set(`transform_${key}`, JSON.stringify(transforms[key]));
