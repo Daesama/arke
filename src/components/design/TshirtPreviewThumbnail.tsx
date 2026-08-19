@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, forwardRef } from "react";
+import { shade } from "@/lib/utils/shirtShading";
 import type { DesignZoneConfig } from "@/types/design";
 
 interface TshirtPreviewThumbnailProps {
@@ -8,14 +9,6 @@ interface TshirtPreviewThumbnailProps {
   colorHex: string;
   className?: string;
   forceSide?: "front" | "back";
-}
-
-function adjustColor(hex: string, amount: number): string {
-  const n = parseInt(hex.replace("#", "").slice(0, 6), 16) || 0;
-  const r = Math.max(0, Math.min(255, ((n >> 16) & 0xff) + amount));
-  const g = Math.max(0, Math.min(255, ((n >> 8) & 0xff) + amount));
-  const b = Math.max(0, Math.min(255, (n & 0xff) + amount));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }
 
 const bodyPath =
@@ -61,11 +54,17 @@ export const TshirtPreviewThumbnail = forwardRef<
   const hasFront = !!(pecho || abdominal);
   const side = forceSide ?? (hasFront ? "front" : espalda ? "back" : "front");
 
-  const shadow = adjustColor(colorHex, -30);
-  const highlight = adjustColor(colorHex, 12);
-  const seam = adjustColor(colorHex, -45);
-  const collar = adjustColor(colorHex, -60);
-  const collarInner = adjustColor(colorHex, -80);
+  // Same adaptive shading as the big preview, so a black shirt keeps a
+  // silhouette here too. The full preview's white contrast outline and glow
+  // are deliberately not copied over: this SVG is serialised straight to a
+  // transparent PNG by downloadSVGAsPNG (admin download), and unlike shading —
+  // which is just fabric colour — a light rim only helps against a dark
+  // backdrop and would read as a halo on any other.
+  const shadow = shade(colorHex, -30);
+  const highlight = shade(colorHex, 12);
+  const seam = shade(colorHex, -45);
+  const collar = shade(colorHex, -60);
+  const collarInner = shade(colorHex, -80);
 
   const pechoScale = pecho?.transform?.scale ?? 1;
   const pechoOffX = pecho?.transform?.offsetX ?? 0;

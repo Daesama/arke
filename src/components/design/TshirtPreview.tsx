@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useState, useId } from "react";
 import { cn } from "@/lib/utils/cn";
+import { shade, contrastNeed } from "@/lib/utils/shirtShading";
 import { RotateCcw, Move, Minus, Plus, Upload, X, Loader2, Undo2, Eraser } from "lucide-react";
 import { bgProgressLabel, type BgProgress } from "@/lib/utils/removeBgClient";
 import type { ZoneTransform, BgRemovalStatus } from "@/types/design";
@@ -106,14 +107,6 @@ const SCALE_MAX = 1.6;
 const SCALE_STEP = 0.05;
 
 type DragZone = "pecho" | "abdominal" | "espalda" | null;
-
-function adjustColor(hex: string, amount: number): string {
-  const n = parseInt(hex.replace("#", "").slice(0, 6), 16) || 0;
-  const r = Math.max(0, Math.min(255, ((n >> 16) & 0xff) + amount));
-  const g = Math.max(0, Math.min(255, ((n >> 8) & 0xff) + amount));
-  const b = Math.max(0, Math.min(255, (n & 0xff) + amount));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
-}
 
 export function TshirtPreview({
   zones,
@@ -227,11 +220,29 @@ export function TshirtPreview({
   if (showAbdominalScale) scaleControls.push({ key: "abdominal", label: "Pecho grande", transform: abdT, onChange: onAbdominalTransformChange!, upload: abdominalUpload });
   if (showEspaldaScale) scaleControls.push({ key: "espalda", label: "Espalda grande", transform: espT, onChange: onEspaldaTransformChange!, upload: espaldaUpload });
 
-  const shadow = adjustColor(color, -30);
-  const highlight = adjustColor(color, 12);
-  const seam = adjustColor(color, -45);
-  const collar = adjustColor(color, -60);
-  const collarInner = adjustColor(color, -80);
+  const shadow = shade(color, -30);
+  const highlight = shade(color, 12);
+  const seam = shade(color, -45);
+  const collar = shade(color, -60);
+  const collarInner = shade(color, -80);
+
+  // A black shirt sits within a few points of the panel behind it, so the
+  // silhouette needs an edge that does not come from the shirt colour. Both
+  // affordances below fade out on their own as the colour lightens — grey and
+  // up are drawn exactly as before.
+  //
+  // captureMode is deliberately excluded: that mockup is exported as a
+  // transparent PNG (capturePreview.ts passes backgroundColor: null) and can be
+  // opened over anything, where a light rim would read as a halo instead of as
+  // separation. The adaptive shading above still applies there, because that is
+  // fabric colour rather than a trick played against one specific backdrop.
+  const contrast = captureMode ? 0 : contrastNeed(color);
+  const rimOpacity = Math.round(contrast * 0.22 * 1000) / 1000;
+  const glowAlpha = Math.round(contrast * 0.12 * 1000) / 1000;
+  const dropShadow =
+    glowAlpha > 0
+      ? `drop-shadow(0 6px 20px rgba(0,0,0,0.35)) drop-shadow(0 0 12px rgba(255,255,255,${glowAlpha}))`
+      : "drop-shadow(0 6px 20px rgba(0,0,0,0.35))";
 
   // Realistic t-shirt outline — sleeves drape naturally at ~45° angle
   const bodyPath =
@@ -333,7 +344,7 @@ export function TshirtPreview({
         <svg
           viewBox="0 0 320 420"
           className="h-full w-full"
-          style={{ filter: "drop-shadow(0 6px 20px rgba(0,0,0,0.35))" }}
+          style={{ filter: dropShadow }}
         >
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
@@ -353,6 +364,18 @@ export function TshirtPreview({
             strokeWidth="1"
             strokeLinejoin="round"
           />
+
+          {/* Contrast outline — see rimOpacity above */}
+          {rimOpacity > 0 && (
+            <path
+              d={bodyPath + (side === "front" ? frontCollar : backCollar)}
+              fill="none"
+              stroke="#ffffff"
+              strokeOpacity={rimOpacity}
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          )}
 
           {/* Collar ring */}
           {side === "front" ? (
