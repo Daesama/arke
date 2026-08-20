@@ -35,6 +35,7 @@ const COLORES = [
   { name: "Verde", value: "#16A34A", slug: "verde" },
   { name: "Naranja", value: "#EA580C", slug: "naranja" },
   { name: "Morado", value: "#7C3AED", slug: "morado" },
+  { name: "Rosado", value: "#F49AC1", slug: "rosado" },
 ];
 
 const TALLAS = ["XS", "S", "M", "L", "XL", "XXL"];

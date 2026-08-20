@@ -22,6 +22,7 @@ export const TSHIRT_COLORS = [
   { name: "Verde", value: "#16A34A", slug: "verde" },
   { name: "Naranja", value: "#EA580C", slug: "naranja" },
   { name: "Morado", value: "#7C3AED", slug: "morado" },
+  { name: "Rosado", value: "#F49AC1", slug: "rosado" },
 ] as const;
 
 export const TSHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;

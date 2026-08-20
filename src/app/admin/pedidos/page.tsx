@@ -87,6 +87,7 @@ const COLOR_NAMES: Record<string, string> = {
   verde: "Verde",
   naranja: "Naranja",
   morado: "Morado",
+  rosado: "Rosado",
 };
 
 const COLOR_HEX: Record<string, string> = {
@@ -99,6 +100,7 @@ const COLOR_HEX: Record<string, string> = {
   verde: "#16A34A",
   naranja: "#EA580C",
   morado: "#7C3AED",
+  rosado: "#F49AC1",
 };
 
 interface OrganizedData {
