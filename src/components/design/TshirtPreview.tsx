@@ -101,12 +101,41 @@ function UploadPlaceholder({
   );
 }
 
+type DragZone = "pecho" | "abdominal" | "espalda" | null;
+
 const DEFAULT_TRANSFORM: ZoneTransform = { offsetX: 0, offsetY: 0, scale: 1 };
 const SCALE_MIN = 0.4;
 const SCALE_MAX = 1.6;
 const SCALE_STEP = 0.05;
 
-type DragZone = "pecho" | "abdominal" | "espalda" | null;
+/*
+  Posición "casa" del pecho bolsillo, en % del contenedor. Estaba escrita como
+  número suelto en el JSX (imagen y placeholder) y ahora la necesita también el
+  clamp de arrastre, así que se nombra una sola vez para que no se separen.
+*/
+const PECHO_HOME_LEFT = 27;
+const PECHO_WIDTH = 15;
+
+/*
+  Borde derecho del torso, leído del bodyPath: el costado derecho va de x=250 a
+  x=258 sobre un viewBox de 320, o sea ~78-81%. 79 deja la estampa pegada al
+  borde sin sobresalir.
+
+  El clamp del arrastre era un ±20 único para las tres zonas. A las centradas
+  (pecho grande, espalda) les alcanza, porque salen de la mitad y 20 puntos las
+  llevan a los dos costados. El pecho bolsillo no: cuelga del borde izquierdo en
+  PECHO_HOME_LEFT, así que +20 lo dejaba en left 47% — la mitad de la camiseta —
+  y no había forma de llevarlo al lado derecho del pecho. Su tope derecho se
+  calcula ahora contra el torso, y depende de la escala porque lo que no puede
+  pasarse del borde es el lado derecho de la imagen, no su ancla.
+*/
+const SHIRT_RIGHT_EDGE = 79;
+const DRAG_LIMIT = 20;
+
+function maxOffsetX(zone: DragZone, scale: number) {
+  if (zone !== "pecho") return DRAG_LIMIT;
+  return SHIRT_RIGHT_EDGE - PECHO_HOME_LEFT - PECHO_WIDTH * scale;
+}
 
 export function TshirtPreview({
   zones,
@@ -174,10 +203,11 @@ export function TshirtPreview({
       const rect = containerRef.current.getBoundingClientRect();
       const dx = ((e.clientX - dragStart.current.x) / rect.width) * 100;
       const dy = ((e.clientY - dragStart.current.y) / rect.height) * 100;
+      const maxX = maxOffsetX(zone, h.transform.scale);
       h.onChange({
         ...h.transform,
-        offsetX: Math.round(Math.max(-20, Math.min(20, dragStart.current.ox + dx)) * 10) / 10,
-        offsetY: Math.round(Math.max(-20, Math.min(40, dragStart.current.oy + dy)) * 10) / 10,
+        offsetX: Math.round(Math.max(-DRAG_LIMIT, Math.min(maxX, dragStart.current.ox + dx)) * 10) / 10,
+        offsetY: Math.round(Math.max(-DRAG_LIMIT, Math.min(40, dragStart.current.oy + dy)) * 10) / 10,
       });
     },
     [getHandler],
@@ -193,7 +223,14 @@ export function TshirtPreview({
       const h = getHandler(zone);
       if (!h?.onChange) return;
       const newScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, h.transform.scale + delta));
-      h.onChange({ ...h.transform, scale: Math.round(newScale * 100) / 100 });
+      // Agrandar una estampa ya pegada al borde derecho le baja el tope: sin
+      // reencuadrarla, crecería hacia afuera del torso.
+      const maxX = maxOffsetX(zone, newScale);
+      h.onChange({
+        ...h.transform,
+        scale: Math.round(newScale * 100) / 100,
+        offsetX: Math.min(h.transform.offsetX, maxX),
+      });
     },
     [getHandler],
   );
@@ -430,8 +467,8 @@ export function TshirtPreview({
                 )}
                 style={{
                   top: `calc(24% + ${pechoT.offsetY}%)`,
-                  left: `calc(27% + ${pechoT.offsetX}%)`,
-                  width: `${15 * pechoT.scale}%`,
+                  left: `calc(${PECHO_HOME_LEFT}% + ${pechoT.offsetX}%)`,
+                  width: `${PECHO_WIDTH * pechoT.scale}%`,
                 }}
                 onPointerDown={(e) => handlePointerDown("pecho", e)}
               >
@@ -461,7 +498,10 @@ export function TshirtPreview({
               </div>
             )}
             {!zones.pechoBolsillo && pechoUpload && (
-              <div className="absolute aspect-square" style={{ top: "24%", left: "27%", width: "15%" }}>
+              <div
+                className="absolute aspect-square"
+                style={{ top: "24%", left: `${PECHO_HOME_LEFT}%`, width: `${PECHO_WIDTH}%` }}
+              >
                 <UploadPlaceholder
                   label="Pecho bolsillo"
                   compact
